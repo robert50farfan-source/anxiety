@@ -75,4 +75,4 @@ create policy "bai: insert propios"
 --    Supabase Dashboard > Authentication > Providers > Anonymous sign-ins → Enable
 -- 2. Variables de entorno (.env.local en la raíz del proyecto):
 --    VITE_SUPABASE_URL=https://<proyecto>.supabase.co
---    VITE_SUPABASE_ANON_KEY=<anon-key>
+--    VITE_SUPABASE_PUBLISHABLE_KEY=<anon-key>
