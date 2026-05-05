@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment variables — NUNCA subir al repo
+.env
+.env.local
+.env.*.local
+
+# Vite / editor
+.vite/
+.DS_Store
+Thumbs.db
+
+# Claude Code
+.claude/
