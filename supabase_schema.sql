@@ -70,9 +70,32 @@ create policy "bai: select propios"
 create policy "bai: insert propios"
   on public.resultados_bai for insert with check (auth.uid() = user_id);
 
+-- ─── CHAT MENSAJES ───────────────────────────────────────────
+
+create table public.chat_mensajes (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null references public.perfiles(id) on delete cascade,
+  rol        text not null check (rol in ('user', 'assistant')),
+  contenido  text not null,
+  fecha      timestamptz default now()
+);
+
+create index chat_mensajes_user_fecha_idx on public.chat_mensajes (user_id, fecha desc);
+
+alter table public.chat_mensajes enable row level security;
+
+create policy "chat: acceso propio"
+  on public.chat_mensajes for all using (auth.uid() = user_id);
+
 -- ─── NOTAS DE CONFIGURACIÓN ──────────────────────────────────
 -- 1. Habilitar autenticación anónima:
 --    Supabase Dashboard > Authentication > Providers > Anonymous sign-ins → Enable
 -- 2. Variables de entorno (.env.local en la raíz del proyecto):
 --    VITE_SUPABASE_URL=https://<proyecto>.supabase.co
---    VITE_SUPABASE_PUBLISHABLE_KEY=<anon-key>
+--    VITE_SUPABASE_PUBLISHABLE_KEY=<publishable-key>
+-- 3. Desplegar Edge Function (requiere Supabase CLI):
+--    supabase login
+--    supabase link --project-ref <ref>   (ref = parte inicial de la URL)
+--    supabase secrets set ANTHROPIC_API_KEY=<tu-api-key>
+--    supabase functions deploy chat-proxy
+--    (La ANTHROPIC_API_KEY NO va en .env.local — vive como secreto en Supabase)
