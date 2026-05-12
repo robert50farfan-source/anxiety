@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useStats } from '../hooks/useStats'
+import { useEmergencyContact, contactUrl } from '../hooks/useEmergencyContact'
 import BreathingGuide from '../components/BreathingGuide'
 import {
   loadChatHistory,
@@ -66,7 +67,28 @@ function differentDay(a, b) {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
+function PhoneButton({ href, label, primary = false, external = false }) {
+  return (
+    <a
+      href={href}
+      target={external ? '_blank' : undefined}
+      rel={external ? 'noopener noreferrer' : undefined}
+      className={`w-full py-2.5 rounded-xl text-sm font-semibold
+                  active:scale-95 transition-transform flex items-center justify-center gap-1.5
+                  ${primary
+                    ? 'bg-red-600 text-white shadow-sm'
+                    : 'bg-red-100 text-red-700'}`}
+    >
+      <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.338c0 1.64.435 3.174 1.2 4.497m16.55 4.347c.765 1.323 1.2 2.857 1.2 4.497M2.25 6.338C2.25 5.23 3.16 4.5 4.248 4.5h1.5c.893 0 1.658.587 1.9 1.45l.823 2.878a2.25 2.25 0 01-.81 2.462l-.91.7c1.074 1.945 2.624 3.56 4.49 4.693l.7-.91a2.25 2.25 0 012.462-.81l2.878.823c.863.242 1.45 1.007 1.45 1.9v1.5c0 1.088-.73 1.998-1.838 1.998C6.75 21 2.25 12.585 2.25 6.338z" />
+      </svg>
+      {label}
+    </a>
+  )
+}
+
 function CrisisCard({ onBreathing }) {
+  const { contact } = useEmergencyContact()
   return (
     <div className="mt-2 rounded-2xl bg-red-50 border border-red-200 p-4 space-y-3 animate-fade-in">
       <div className="flex items-start gap-2">
@@ -83,16 +105,18 @@ function CrisisCard({ onBreathing }) {
         >
           Ejercicio de respiración ahora
         </button>
-        <a
+        {contact && (
+          <PhoneButton
+            href={contactUrl(contact)}
+            label={`${contact.via === 'whatsapp' ? 'WhatsApp a' : 'Llamar a'} ${contact.name}`}
+            primary
+            external={contact.via === 'whatsapp'}
+          />
+        )}
+        <PhoneButton
           href="tel:80010100"
-          className="w-full py-2.5 rounded-xl bg-red-100 text-red-700 text-sm font-semibold
-                     active:scale-95 transition-transform flex items-center justify-center gap-1.5"
-        >
-          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.338c0 1.64.435 3.174 1.2 4.497m16.55 4.347c.765 1.323 1.2 2.857 1.2 4.497M2.25 6.338C2.25 5.23 3.16 4.5 4.248 4.5h1.5c.893 0 1.658.587 1.9 1.45l.823 2.878a2.25 2.25 0 01-.81 2.462l-.91.7c1.074 1.945 2.624 3.56 4.49 4.693l.7-.91a2.25 2.25 0 012.462-.81l2.878.823c.863.242 1.45 1.007 1.45 1.9v1.5c0 1.088-.73 1.998-1.838 1.998C6.75 21 2.25 12.585 2.25 6.338z" />
-          </svg>
-          Línea de apoyo Bolivia: 800-10-4100
-        </a>
+          label="Línea de apoyo Bolivia: 800-10-4100"
+        />
       </div>
       <p className="text-xs text-red-500 text-center">
         Hablar con alguien de confianza también ayuda.

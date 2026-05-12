@@ -1,7 +1,10 @@
 import { useState } from 'react'
 import BreathingGuide from '../components/BreathingGuide'
 import GroundingGuide from '../components/GroundingGuide'
+import MuscleGuide from '../components/MuscleGuide'
+import MindfulnessGuide from '../components/MindfulnessGuide'
 import { useStats } from '../hooks/useStats'
+import { useEmergencyContact, contactUrl } from '../hooks/useEmergencyContact'
 
 const MOODS = [
   { emoji: '😨', label: 'Muy mal',  level: 1 },
@@ -12,9 +15,9 @@ const MOODS = [
 ]
 
 const quickTips = [
-  { id: 'grounding', icon: '🌊', title: 'Grounding 5-4-3-2-1', desc: 'Nombra 5 cosas que ves, 4 que tocas...' },
-  { id: null,        icon: '🧘', title: 'Relajación muscular',  desc: 'Tensa y relaja grupos musculares' },
-  { id: null,        icon: '💭', title: 'Detención del pensamiento', desc: 'Interrumpe el ciclo de pensamientos' },
+  { id: 'grounding',    icon: '🌊', title: 'Grounding 5-4-3-2-1', desc: 'Nombra 5 cosas que ves, 4 que tocas...' },
+  { id: 'muscle',       icon: '💪', title: 'Relajación muscular',  desc: 'Tensa y relaja grupos musculares' },
+  { id: 'mindfulness',  icon: '🧘', title: 'Mindfulness',          desc: 'Observa tus pensamientos sin juzgarlos' },
 ]
 
 function BreathingIcon() {
@@ -50,13 +53,16 @@ function BreathingIcon() {
 }
 
 export default function Home() {
-  const [showBreathing, setShowBreathing] = useState(false)
-  const [showGrounding, setShowGrounding] = useState(false)
-  const [selectedMood, setSelectedMood]   = useState(null)
+  const [showBreathing,   setShowBreathing]   = useState(false)
+  const [showGrounding,   setShowGrounding]   = useState(false)
+  const [showMuscle,      setShowMuscle]      = useState(false)
+  const [showMindfulness, setShowMindfulness] = useState(false)
+  const [selectedMood, setSelectedMood]       = useState(null)
   const [moodNote, setMoodNote]           = useState('')
   const [noteSaved, setNoteSaved]         = useState(false)
 
   const { todayExercises, streak, logMood } = useStats()
+  const { contact } = useEmergencyContact()
 
   const handleMoodSelect = (mood) => {
     setSelectedMood(mood)
@@ -144,22 +150,42 @@ export default function Home() {
         </div>
 
         {/* CRISIS BUTTON */}
-        <button
-          onClick={() => setShowBreathing(true)}
-          className="w-full py-6 rounded-3xl relative overflow-hidden
-                     bg-gradient-to-br from-calm-500 to-ocean-500
-                     text-white font-bold
-                     shadow-xl shadow-calm-300/60
-                     active:scale-95 transition-all duration-200
-                     animate-pulse-ring"
-        >
-          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent" />
-          <div className="relative flex flex-col items-center gap-2">
-            <BreathingIcon />
-            <span className="text-2xl tracking-wide">Estoy en crisis</span>
-            <span className="text-sm font-normal text-white/80">Toca para la guía de respiración</span>
-          </div>
-        </button>
+        <div className="space-y-2">
+          <button
+            onClick={() => setShowBreathing(true)}
+            className="w-full py-6 rounded-3xl relative overflow-hidden
+                       bg-gradient-to-br from-calm-500 to-ocean-500
+                       text-white font-bold
+                       shadow-xl shadow-calm-300/60
+                       active:scale-95 transition-all duration-200
+                       animate-pulse-ring"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent" />
+            <div className="relative flex flex-col items-center gap-2">
+              <BreathingIcon />
+              <span className="text-2xl tracking-wide">Estoy en crisis</span>
+              <span className="text-sm font-normal text-white/80">Toca para la guía de respiración</span>
+            </div>
+          </button>
+          {contact && (
+            <a
+              href={contactUrl(contact)}
+              target={contact.via === 'whatsapp' ? '_blank' : undefined}
+              rel={contact.via === 'whatsapp' ? 'noopener noreferrer' : undefined}
+              className={`w-full py-3.5 rounded-2xl text-white font-semibold
+                         flex items-center justify-center gap-2
+                         active:scale-95 transition-transform shadow-md
+                         ${contact.via === 'whatsapp'
+                           ? 'bg-green-500 shadow-green-200'
+                           : 'bg-red-500 shadow-red-200'}`}
+            >
+              <span className="text-lg leading-none">
+                {contact.via === 'whatsapp' ? '💬' : '📞'}
+              </span>
+              {contact.via === 'whatsapp' ? 'WhatsApp a' : 'Llamar a'} {contact.name}
+            </a>
+          )}
+        </div>
 
         {/* Daily stats — from localStorage */}
         <div className="grid grid-cols-2 gap-3">
@@ -180,7 +206,11 @@ export default function Home() {
             {quickTips.map((tip, i) => (
               <button
                 key={i}
-                onClick={() => tip.id === 'grounding' && setShowGrounding(true)}
+                onClick={() => {
+                  if (tip.id === 'grounding')   setShowGrounding(true)
+                  if (tip.id === 'muscle')      setShowMuscle(true)
+                  if (tip.id === 'mindfulness') setShowMindfulness(true)
+                }}
                 className="card w-full text-left flex items-center gap-4
                            active:scale-[0.98] hover:border-calm-200 transition-all"
               >
@@ -210,6 +240,20 @@ export default function Home() {
       {showGrounding && (
         <GroundingGuide
           onClose={() => setShowGrounding(false)}
+          currentMood={selectedMood}
+          moodNote={moodNote}
+        />
+      )}
+      {showMuscle && (
+        <MuscleGuide
+          onClose={() => setShowMuscle(false)}
+          currentMood={selectedMood}
+          moodNote={moodNote}
+        />
+      )}
+      {showMindfulness && (
+        <MindfulnessGuide
+          onClose={() => setShowMindfulness(false)}
           currentMood={selectedMood}
           moodNote={moodNote}
         />

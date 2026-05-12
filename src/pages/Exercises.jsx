@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import BreathingGuide from '../components/BreathingGuide'
 import GroundingGuide from '../components/GroundingGuide'
+import MuscleGuide from '../components/MuscleGuide'
+import MindfulnessGuide from '../components/MindfulnessGuide'
+import VisualizationGuide from '../components/VisualizationGuide'
 
 function BreathingCircleIcon({ className = '' }) {
   return (
@@ -81,9 +84,21 @@ const exercises = [
 ]
 
 export default function Exercises() {
-  const [showBreathing, setShowBreathing] = useState(false)
-  const [showGrounding, setShowGrounding] = useState(false)
+  const [showBreathing,      setShowBreathing]      = useState(false)
+  const [showGrounding,      setShowGrounding]      = useState(false)
+  const [showMuscle,         setShowMuscle]         = useState(false)
+  const [showMindfulness,    setShowMindfulness]    = useState(false)
+  const [showVisualization,  setShowVisualization]  = useState(false)
   const [expanded, setExpanded] = useState(null)
+
+  const getAction = (id) => {
+    if (id === 'breathing478') return () => setShowBreathing(true)
+    if (id === 'grounding')    return () => setShowGrounding(true)
+    if (id === 'muscle')       return () => setShowMuscle(true)
+    if (id === 'mindfulness')  return () => setShowMindfulness(true)
+    if (id === 'visualization')return () => setShowVisualization(true)
+    return null
+  }
 
   return (
     <>
@@ -146,25 +161,12 @@ export default function Exercises() {
               {expanded === ex.id && (
                 <div className="mt-4 pt-4 border-t border-calm-100 animate-fade-in">
                   <p className="text-sm text-gray-600 leading-relaxed">{ex.description}</p>
-                  {ex.isBreathing ? (
-                    <button
-                      onClick={() => setShowBreathing(true)}
-                      className="btn-primary w-full mt-4 text-center"
-                    >
-                      Iniciar ejercicio
-                    </button>
-                  ) : ex.id === 'grounding' ? (
-                    <button
-                      onClick={() => setShowGrounding(true)}
-                      className="btn-primary w-full mt-4 text-center"
-                    >
-                      Iniciar ejercicio
-                    </button>
-                  ) : (
-                    <button className="btn-secondary w-full mt-4 text-center">
-                      Próximamente
-                    </button>
-                  )}
+                  <button
+                    onClick={getAction(ex.id)}
+                    className="btn-primary w-full mt-4 text-center"
+                  >
+                    Iniciar ejercicio
+                  </button>
                 </div>
               )}
             </div>
@@ -172,8 +174,11 @@ export default function Exercises() {
         </div>
       </div>
 
-      {showBreathing && <BreathingGuide onClose={() => setShowBreathing(false)} />}
-      {showGrounding && <GroundingGuide onClose={() => setShowGrounding(false)} />}
+      {showBreathing     && <BreathingGuide     onClose={() => setShowBreathing(false)} />}
+      {showGrounding     && <GroundingGuide     onClose={() => setShowGrounding(false)} />}
+      {showMuscle        && <MuscleGuide        onClose={() => setShowMuscle(false)} />}
+      {showMindfulness   && <MindfulnessGuide   onClose={() => setShowMindfulness(false)} />}
+      {showVisualization && <VisualizationGuide onClose={() => setShowVisualization(false)} />}
     </>
   )
 }

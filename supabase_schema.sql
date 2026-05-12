@@ -87,6 +87,22 @@ alter table public.chat_mensajes enable row level security;
 create policy "chat: acceso propio"
   on public.chat_mensajes for all using (auth.uid() = user_id);
 
+-- ─── PUSH SUBSCRIPTIONS ─────────────────────────────────────
+
+create table public.push_subscriptions (
+  id            uuid primary key default gen_random_uuid(),
+  user_id       uuid not null references public.perfiles(id) on delete cascade,
+  subscription  jsonb not null,
+  reminder_hour int default 9 check (reminder_hour between 0 and 23),
+  creado_en     timestamptz default now(),
+  constraint push_subscriptions_user_unique unique(user_id)
+);
+
+alter table public.push_subscriptions enable row level security;
+
+create policy "push: acceso propio"
+  on public.push_subscriptions for all using (auth.uid() = user_id);
+
 -- ─── NOTAS DE CONFIGURACIÓN ──────────────────────────────────
 -- 1. Habilitar autenticación anónima:
 --    Supabase Dashboard > Authentication > Providers > Anonymous sign-ins → Enable
