@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useStats } from '../hooks/useStats'
+import { useMindfulnessAudio } from '../hooks/useMindfulnessAudio'
 
 const DURATIONS = [
   { label: '3 min',  value: 3  },
@@ -35,6 +36,7 @@ export default function MindfulnessGuide({ onClose, currentMood = null, moodNote
   const breathRef   = useRef(null)
   const promptRef   = useRef(null)
   const { logExercise } = useStats()
+  const { muted, toggleMute, cueBreathe, cuePrompt } = useMindfulnessAudio()
 
   const totalSec = duration * 60
   const progress = Math.min(elapsed / totalSec, 1)
@@ -56,13 +58,15 @@ export default function MindfulnessGuide({ onClose, currentMood = null, moodNote
     return () => clearInterval(timerRef.current)
   }, [phase, totalSec])
 
-  // Breath cycle
+  // Breath cycle + audio cue — cueBreathe skips internally if speechSynthesis is active
   useEffect(() => {
     if (phase !== 'session') return
     const cycle = () => {
       setBreathPhase('inhale')
+      cueBreathe('inhale')
       breathRef.current = setTimeout(() => {
         setBreathPhase('exhale')
+        cueBreathe('exhale')
         breathRef.current = setTimeout(cycle, BREATH_EXHALE)
       }, BREATH_INHALE)
     }
@@ -70,13 +74,17 @@ export default function MindfulnessGuide({ onClose, currentMood = null, moodNote
     return () => clearTimeout(breathRef.current)
   }, [phase])
 
-  // Rotating prompts with fade
+  // Rotating prompts with fade + audio cue
   useEffect(() => {
     if (phase !== 'session') return
     promptRef.current = setInterval(() => {
       setPromptVisible(false)
       setTimeout(() => {
-        setPromptIdx(i => (i + 1) % PROMPTS.length)
+        setPromptIdx(i => {
+          const next = (i + 1) % PROMPTS.length
+          cuePrompt(PROMPTS[next])
+          return next
+        })
         setPromptVisible(true)
       }, 600)
     }, PROMPT_INTERVAL)
@@ -89,6 +97,8 @@ export default function MindfulnessGuide({ onClose, currentMood = null, moodNote
     setPromptIdx(0)
     setPromptVisible(true)
     setPhase('session')
+    // Read first prompt after a short pause to let the session start
+    setTimeout(() => cuePrompt(PROMPTS[0]), 1500)
   }
 
   const formatTime = s => {
@@ -166,6 +176,18 @@ export default function MindfulnessGuide({ onClose, currentMood = null, moodNote
               </svg>
             </button>
             <div className="flex-1" />
+            <button onClick={toggleMute} className="w-8 h-8 rounded-full bg-white/10 flex items-center
+                                                     justify-center text-white active:scale-90 transition-all">
+              {muted ? (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 9.75L19.5 12m0 0l2.25 2.25M19.5 12l2.25-2.25M19.5 12l-2.25 2.25m-10.5-6l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+                </svg>
+              )}
+            </button>
             <span className="text-sm text-white/60 font-medium tabular-nums">{formatTime(remaining)}</span>
           </div>
 
