@@ -36,7 +36,7 @@ export default function MindfulnessGuide({ onClose, currentMood = null, moodNote
   const breathRef   = useRef(null)
   const promptRef   = useRef(null)
   const { logExercise } = useStats()
-  const { muted, toggleMute, cueBreathe, cuePrompt } = useMindfulnessAudio()
+  const { muted, toggleMute, cueBreathe, cuePrompt, cueComplete } = useMindfulnessAudio()
 
   const totalSec = duration * 60
   const progress = Math.min(elapsed / totalSec, 1)
@@ -49,6 +49,7 @@ export default function MindfulnessGuide({ onClose, currentMood = null, moodNote
         if (s + 1 >= totalSec) {
           clearInterval(timerRef.current)
           logExercise('mindfulness', { moodLevel: currentMood?.level, moodNote, durationMinutes: duration })
+          cueComplete()
           setPhase('done')
           return totalSec
         }
@@ -263,6 +264,7 @@ export default function MindfulnessGuide({ onClose, currentMood = null, moodNote
                 clearInterval(promptRef.current)
                 const mins = Math.max(1, Math.round(elapsed / 60))
                 logExercise('mindfulness', { moodLevel: currentMood?.level, moodNote, durationMinutes: mins })
+                cueComplete()
                 setPhase('done')
               }}
               className="w-full py-3 rounded-2xl bg-white/8 border border-white/15

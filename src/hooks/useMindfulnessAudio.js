@@ -95,6 +95,12 @@ export function useMindfulnessAudio() {
     setTimeout(() => speakPrompt(text), 1200)
   }, [playBell, speakPrompt])
 
+  // Session-end cue: bell → pause → speak completion message
+  const cueComplete = useCallback(() => {
+    playBell()
+    setTimeout(() => speakPrompt('Sesión completada. Has entrenado tu mente para estar presente. Bien hecho.'), 1200)
+  }, [playBell, speakPrompt])
+
   // Breath cue: tone → pause → speak only if nothing is playing
   const cueBreathe = useCallback((breathPhase) => {
     const cfg = BREATH_TONES[breathPhase]
@@ -115,5 +121,5 @@ export function useMindfulnessAudio() {
     }
   }, [])
 
-  return { muted, toggleMute, cueBreathe, cuePrompt }
+  return { muted, toggleMute, cueBreathe, cuePrompt, cueComplete }
 }
