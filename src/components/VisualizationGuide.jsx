@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useStats } from '../hooks/useStats'
+import { useVisualizationAudio } from '../hooks/useVisualizationAudio'
 
 const SCENES = [
   {
@@ -44,28 +45,73 @@ const SCENES = [
   },
 ]
 
+const SCENE_DURATION = 60  // seconds per scene → 8 scenes × 60s = 8 min
+
 export default function VisualizationGuide({ onClose, currentMood = null, moodNote = '' }) {
-  const [phase, setPhase]       = useState('intro')   // 'intro' | 'session' | 'done'
-  const [sceneIdx, setSceneIdx] = useState(0)
+  const [phase, setPhase]             = useState('intro')
+  const [sceneIdx, setSceneIdx]       = useState(0)
+  const [timeLeft, setTimeLeft]       = useState(SCENE_DURATION)
+  const [contemplating, setContemplating] = useState(false)  // speech finished, silence phase
+  const timerRef  = useRef(null)
   const { logExercise } = useStats()
+  const { muted, toggleMute, cueScene, cueComplete, cancel } = useVisualizationAudio()
 
   const scene    = SCENES[sceneIdx]
   const isLast   = sceneIdx === SCENES.length - 1
   const progress = (sceneIdx + 1) / SCENES.length
+
+  // SVG ring
+  const R    = 54
+  const CIRC = 2 * Math.PI * R
+  const ringProgress = (SCENE_DURATION - timeLeft) / SCENE_DURATION
+  const dash = CIRC * ringProgress
+  const gap  = CIRC - dash
+
+  // Start countdown for current scene
+  useEffect(() => {
+    if (phase !== 'session') return
+    setTimeLeft(SCENE_DURATION)
+    setContemplating(false)
+
+    // Audio: bell + speak scene text; mark contemplation when speech ends
+    cueScene(scene.text, () => setContemplating(true))
+
+    timerRef.current = setInterval(() => {
+      setTimeLeft(t => {
+        if (t <= 1) {
+          clearInterval(timerRef.current)
+          advance()
+          return 0
+        }
+        return t - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(timerRef.current)
+  }, [phase, sceneIdx])
+
+  const advance = () => {
+    if (isLast) {
+      logExercise('visualization', { moodLevel: currentMood?.level, moodNote, durationMinutes: 8 })
+      cueComplete()
+      setPhase('done')
+    } else {
+      setSceneIdx(i => i + 1)
+    }
+  }
+
+  const skipScene = () => {
+    clearInterval(timerRef.current)
+    cancel()
+    advance()
+  }
 
   const startSession = () => {
     setSceneIdx(0)
     setPhase('session')
   }
 
-  const next = () => {
-    if (isLast) {
-      logExercise('visualization', { moodLevel: currentMood?.level, moodNote, durationMinutes: 8 })
-      setPhase('done')
-    } else {
-      setSceneIdx(i => i + 1)
-    }
-  }
+  const formatTime = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-gradient-to-b from-gray-900 via-purple-950 to-gray-900 animate-fade-in">
@@ -85,21 +131,20 @@ export default function VisualizationGuide({ onClose, currentMood = null, moodNo
             </div>
             <p className="text-white/70 leading-relaxed max-w-xs">
               Te llevaré en un viaje imaginario a una playa tranquila.
-              Cierra los ojos entre cada escena y permítete sentir lo que describes.
+              Cierra los ojos y permítete sentir cada escena.
             </p>
             <div className="flex flex-col gap-2 text-sm text-white/50">
               <div className="flex items-center gap-2 justify-center">
                 <span className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-xs">8</span>
-                <span>escenas guiadas</span>
+                <span>escenas · 1 min cada una</span>
               </div>
-              <span>Duración aproximada: 8 min</span>
+              <span>Duración aproximada: 8 min · audio guiado</span>
             </div>
           </div>
           <div className="px-6 pb-safe pb-10">
-            <button onClick={startSession} className="w-full py-4 rounded-2xl
-                                                        bg-gradient-to-r from-purple-500 to-ocean-500
-                                                        text-white text-lg font-semibold
-                                                        active:scale-95 transition-transform">
+            <button onClick={startSession}
+                    className="w-full py-4 rounded-2xl bg-gradient-to-r from-purple-500 to-ocean-500
+                               text-white text-lg font-semibold active:scale-95 transition-transform">
               Comenzar viaje
             </button>
           </div>
@@ -111,36 +156,62 @@ export default function VisualizationGuide({ onClose, currentMood = null, moodNo
         <>
           {/* Top bar */}
           <div className="px-5 pt-safe pt-5 pb-3 flex items-center gap-3 shrink-0">
-            <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/10 flex items-center
-                                                  justify-center text-white active:scale-90 transition-all">
+            <button onClick={onClose}
+                    className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center
+                               text-white active:scale-90 transition-all">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
             <div className="flex-1 h-1.5 bg-white/20 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-purple-400 rounded-full transition-all duration-500"
-                style={{ width: `${progress * 100}%` }}
-              />
+              <div className="h-full bg-purple-400 rounded-full transition-all duration-500"
+                   style={{ width: `${progress * 100}%` }} />
             </div>
-            <span className="text-xs text-white/60 shrink-0">{sceneIdx + 1}/{SCENES.length}</span>
+            <button onClick={toggleMute}
+                    className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center
+                               text-white active:scale-90 transition-all">
+              {muted ? (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 9.75L19.5 12m0 0l2.25 2.25M19.5 12l2.25-2.25M19.5 12l-2.25 2.25m-10.5-6l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+                </svg>
+              )}
+            </button>
+            <span className="text-xs text-white/60 tabular-nums shrink-0">{sceneIdx + 1}/{SCENES.length}</span>
           </div>
 
           {/* Scene content */}
-          <div
-            className="flex-1 flex flex-col items-center justify-center px-7 gap-7 animate-fade-in"
-            key={sceneIdx}
-          >
-            {/* Scene icon */}
-            <div className="w-24 h-24 rounded-full bg-white/5 border border-white/15
-                            flex items-center justify-center text-5xl
-                            shadow-[0_0_40px_rgba(168,85,247,0.2)]">
-              {scene.icon}
+          <div className="flex-1 flex flex-col items-center justify-center px-7 gap-6 animate-fade-in"
+               key={sceneIdx}>
+
+            {/* Countdown ring + icon */}
+            <div className="relative flex items-center justify-center">
+              <svg width="140" height="140" className="absolute" style={{ transform: 'rotate(-90deg)' }}>
+                <circle cx="70" cy="70" r={R} fill="none" stroke="rgba(168,85,247,0.15)" strokeWidth="3" />
+                <circle
+                  cx="70" cy="70" r={R}
+                  fill="none"
+                  stroke="#c084fc"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeDasharray={`${dash} ${gap}`}
+                  style={{ transition: 'stroke-dasharray 1s linear' }}
+                />
+              </svg>
+              <div className="w-24 h-24 rounded-full bg-white/5 border border-white/15
+                              flex flex-col items-center justify-center
+                              shadow-[0_0_40px_rgba(168,85,247,0.2)] gap-0.5">
+                <span className="text-4xl leading-none">{scene.icon}</span>
+                <span className="text-white/50 text-xs tabular-nums">{formatTime(timeLeft)}</span>
+              </div>
             </div>
 
-            {/* Scene title */}
+            {/* Title */}
             <div className="text-center">
-              <p className="text-xs font-bold tracking-widest uppercase text-purple-400 mb-2">
+              <p className="text-xs font-bold tracking-widest uppercase text-purple-400 mb-1">
                 Escena {sceneIdx + 1}
               </p>
               <h3 className="text-2xl font-bold text-white">{scene.title}</h3>
@@ -153,22 +224,18 @@ export default function VisualizationGuide({ onClose, currentMood = null, moodNo
               </p>
             </div>
 
-            {/* Breathe hint */}
-            <p className="text-white/30 text-xs italic">
-              Cierra los ojos un momento y visualízalo
+            {/* Contemplation hint — appears after speech ends */}
+            <p className={`text-xs italic transition-opacity duration-700
+                           ${contemplating ? 'text-purple-300/60 opacity-100' : 'text-transparent opacity-0'}`}>
+              Visualiza... cierra los ojos si puedes
             </p>
           </div>
 
-          {/* Next button */}
-          <div className="px-6 pb-safe pb-10 shrink-0">
-            <button
-              onClick={next}
-              className={`w-full py-4 rounded-2xl text-white text-base font-semibold
-                          active:scale-95 transition-all
-                          ${isLast
-                            ? 'bg-gradient-to-r from-purple-500 to-ocean-500 shadow-lg'
-                            : 'bg-white/15 border border-white/20'}`}
-            >
+          {/* Skip button */}
+          <div className="px-6 pb-safe pb-8 shrink-0">
+            <button onClick={skipScene}
+                    className="w-full py-3 rounded-2xl bg-white/8 border border-white/15
+                               text-white/60 text-sm active:scale-95 transition-transform">
               {isLast ? 'Completar visualización' : 'Siguiente escena →'}
             </button>
           </div>
@@ -198,12 +265,13 @@ export default function VisualizationGuide({ onClose, currentMood = null, moodNo
             </p>
           </div>
           <div className="px-6 pb-safe pb-10 space-y-3">
-            <button onClick={startSession} className="btn-secondary w-full py-3.5 bg-white/10 text-white border-white/20">
+            <button onClick={startSession}
+                    className="btn-secondary w-full py-3.5 bg-white/10 text-white border-white/20">
               Repetir viaje
             </button>
-            <button onClick={onClose} className="w-full py-4 rounded-2xl
-                                                  bg-gradient-to-r from-purple-500 to-ocean-500
-                                                  text-white font-semibold active:scale-95 transition-transform">
+            <button onClick={onClose}
+                    className="w-full py-4 rounded-2xl bg-gradient-to-r from-purple-500 to-ocean-500
+                               text-white font-semibold active:scale-95 transition-transform">
               Volver
             </button>
           </div>
