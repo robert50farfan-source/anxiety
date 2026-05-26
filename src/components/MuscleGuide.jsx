@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useStats } from '../hooks/useStats'
+import { useMuscleAudio } from '../hooks/useMuscleAudio'
 
 const GROUPS = [
   { name: 'Pies y dedos',  tense: 'Dobla los dedos del pie hacia abajo con fuerza',         relax: 'Suelta completamente, siente el peso en el suelo' },
@@ -24,6 +25,7 @@ export default function MuscleGuide({ onClose, currentMood = null, moodNote = ''
   const [relaxed, setRelaxed]     = useState(false)     // drives CSS relax animation
   const timerRef = useRef(null)
   const { logExercise } = useStats()
+  const { muted, toggleMute, cue, cancel } = useMuscleAudio()
 
   const group = GROUPS[groupIdx]
 
@@ -42,6 +44,13 @@ export default function MuscleGuide({ onClose, currentMood = null, moodNote = ''
       })
     }, 1000)
     return () => clearInterval(timerRef.current)
+  }, [phase, groupIdx, stage])
+
+  // Audio cue at each stage/group change
+  useEffect(() => {
+    if (phase !== 'exercise') return
+    const instruction = stage === 'tense' ? group.tense : group.relax
+    cue(stage, group.name, instruction)
   }, [phase, groupIdx, stage])
 
   // CSS animation: relax circle expands over RELAX_SEC
@@ -130,6 +139,18 @@ export default function MuscleGuide({ onClose, currentMood = null, moodNote = ''
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
+            <button onClick={toggleMute} className="w-8 h-8 rounded-full bg-white/10 flex items-center
+                                                     justify-center text-white active:scale-90 transition-all shrink-0">
+              {muted ? (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 9.75L19.5 12m0 0l2.25 2.25M19.5 12l2.25-2.25M19.5 12l-2.25 2.25m-10.5-6l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+                </svg>
+              )}
+            </button>
             <div className="flex-1 h-1.5 bg-white/20 rounded-full overflow-hidden">
               <div
                 className="h-full bg-calm-400 rounded-full transition-all duration-500"
@@ -179,7 +200,7 @@ export default function MuscleGuide({ onClose, currentMood = null, moodNote = ''
 
           {/* Skip button */}
           <div className="px-6 pb-safe pb-8 shrink-0">
-            <button onClick={advance}
+            <button onClick={() => { cancel(); advance() }}
                     className="w-full py-3 rounded-2xl bg-white/8 border border-white/15
                                text-white/60 text-sm active:scale-95 transition-transform">
               Saltar al siguiente

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
+import { useBAIContext } from '../hooks/useBAIContext'
 
 // ─── BAI items (validated Spanish translation) ────────────────────────────────
 
@@ -105,8 +106,17 @@ function HistoryItem({ result }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
+const bannerColors = {
+  verde: 'bg-green-50 border border-green-200 text-green-800',
+  ambar: 'bg-amber-50 border border-amber-200 text-amber-800',
+  azul:  'bg-blue-50 border border-blue-200 text-blue-800',
+  info:  'bg-calm-50 border border-calm-200 text-calm-700',
+  neutro:'bg-gray-50 border border-gray-200 text-gray-600',
+}
+
 export default function BAI({ onClose }) {
   const { userId } = useAuth()
+  const { bannerContext, proximaMedicion, TIPO_LABEL, cargar: recargarBAI } = useBAIContext()
 
   const [phase,   setPhase]   = useState('intro')    // 'intro' | 'questions' | 'done'
   const [page,    setPage]    = useState(0)
@@ -143,6 +153,7 @@ export default function BAI({ onClose }) {
       saveResult(userId, answers).finally(() => {
         setSaving(false)
         fetchHistory(userId).then(setHistory)
+        recargarBAI()
       })
       setPhase('done')
     }
@@ -201,6 +212,13 @@ export default function BAI({ onClose }) {
                 <div className="space-y-2">
                   {history.map(r => <HistoryItem key={r.id} result={r} />)}
                 </div>
+              </div>
+            )}
+
+            {bannerContext?.texto && (
+              <div className={`mb-4 p-3 rounded-xl text-sm leading-relaxed ${bannerColors[bannerContext.color]}`}>
+                {bannerContext.urgente && <span className="font-bold mr-1">⚠</span>}
+                {bannerContext.texto}
               </div>
             )}
           </div>
@@ -320,6 +338,20 @@ export default function BAI({ onClose }) {
               <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/70`}>
                 <span className={`text-sm font-bold ${interp.color}`}>Ansiedad {interp.label}</span>
               </div>
+            </div>
+
+            {/* Tipo de medición guardada */}
+            <div className="card mb-4 text-center">
+              <p className="text-sm text-gray-500">Esta medición fue registrada como</p>
+              <p className="font-semibold text-calm-700 mt-1">
+                {TIPO_LABEL[bannerContext?.tipo] ?? 'Voluntaria'}
+              </p>
+              {proximaMedicion && (
+                <p className="text-xs text-gray-400 mt-2">
+                  Tu siguiente medición programada: {proximaMedicion.label} <br/>
+                  Del {proximaMedicion.desde.toLocaleDateString('es-PE', { day: 'numeric', month: 'short' })} al {proximaMedicion.hasta.toLocaleDateString('es-PE', { day: 'numeric', month: 'short' })}
+                </p>
+              )}
             </div>
 
             {/* Scale reference */}

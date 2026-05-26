@@ -1,7 +1,7 @@
 import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching'
 import { clientsClaim } from 'workbox-core'
 import { registerRoute } from 'workbox-routing'
-import { CacheFirst } from 'workbox-strategies'
+import { CacheFirst, NetworkOnly } from 'workbox-strategies'
 import { ExpirationPlugin } from 'workbox-expiration'
 
 self.skipWaiting()
@@ -9,6 +9,12 @@ clientsClaim()
 
 cleanupOutdatedCaches()
 precacheAndRoute(self.__WB_MANIFEST)
+
+// /admin/* nunca se sirve desde caché — el admin siempre requiere conexión
+registerRoute(
+  ({ url }) => url.pathname.startsWith('/admin'),
+  new NetworkOnly()
+)
 
 // Google Fonts cache
 registerRoute(

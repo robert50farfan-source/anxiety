@@ -3,6 +3,9 @@ import { useProgressData, TECNICA } from '../hooks/useProgressData'
 import { usePushNotifications } from '../hooks/usePushNotifications'
 import { useEmergencyContact } from '../hooks/useEmergencyContact'
 import BAI from './BAI'
+import MisEpisodios from '../components/MisEpisodios'
+import EpisodioWizard from '../components/EpisodioWizard'
+import { useParticipante } from '../context/ParticipanteContext'
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -295,6 +298,10 @@ function NotificationsCard() {
 export default function Progress() {
   const { data, loading, error } = useProgressData()
   const [showBAI, setShowBAI] = useState(false)
+  const [showEpisodioWizard, setShowEpisodioWizard] = useState(false)
+  const [wizardInitialData, setWizardInitialData] = useState(null)
+  const [wizardInitialPaso, setWizardInitialPaso] = useState(1)
+  const { esExperimental } = useParticipante() ?? {}
 
   if (loading) return <LoadingSkeleton />
 
@@ -447,6 +454,15 @@ export default function Progress() {
       {/* Notifications */}
       <NotificationsCard />
 
+      {/* Mis episodios */}
+      <MisEpisodios
+        onAbrirWizard={({ initialData, initialPaso } = {}) => {
+          setWizardInitialData(initialData ?? null)
+          setWizardInitialPaso(initialPaso ?? 1)
+          setShowEpisodioWizard(true)
+        }}
+      />
+
       {/* BAI */}
       <div>
         <h2 className="section-title mb-3">Cuestionario de ansiedad</h2>
@@ -470,6 +486,14 @@ export default function Progress() {
 
     </div>
     {showBAI && <BAI onClose={() => setShowBAI(false)} />}
+    {showEpisodioWizard && (
+      <EpisodioWizard
+        onClose={() => { setShowEpisodioWizard(false); setWizardInitialData(null); setWizardInitialPaso(1) }}
+        initialData={wizardInitialData}
+        initialPaso={wizardInitialPaso}
+        esExperimental={esExperimental ?? false}
+      />
+    )}
     </>
   )
 }

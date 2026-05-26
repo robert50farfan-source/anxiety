@@ -1,0 +1,1 @@
+export const VERSION_CONSENTIMIENTO_VIGENTE = 'v1.0'

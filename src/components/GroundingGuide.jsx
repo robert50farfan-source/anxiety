@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useStats } from '../hooks/useStats'
+import { useGroundingAudio } from '../hooks/useGroundingAudio'
 
 const STEPS = [
   {
@@ -104,6 +105,7 @@ export default function GroundingGuide({ onClose, currentMood = null, moodNote =
   )
   const firstInputRef = useRef(null)
   const { logExercise } = useStats()
+  const { muted, toggleMute, cueStep, cueComplete, cancel } = useGroundingAudio()
 
   const stepIdx = typeof phase === 'number' ? phase : null
   const step    = stepIdx !== null ? STEPS[stepIdx] : null
@@ -114,6 +116,13 @@ export default function GroundingGuide({ onClose, currentMood = null, moodNote =
       const t = setTimeout(() => firstInputRef.current?.focus(), 300)
       return () => clearTimeout(t)
     }
+  }, [stepIdx])
+
+  // Audio cue on each step
+  useEffect(() => {
+    if (stepIdx === null) return
+    const s = STEPS[stepIdx]
+    cueStep(stepIdx, s.instruction, s.hint)
   }, [stepIdx])
 
   const updateAnswer = (stepI, fieldI, value) => {
@@ -128,6 +137,7 @@ export default function GroundingGuide({ onClose, currentMood = null, moodNote =
     && answers[stepIdx].some(v => v.trim().length > 0)
 
   const handleNext = () => {
+    cancel()
     if (stepIdx < STEPS.length - 1) {
       setPhase(stepIdx + 1)
     } else {
@@ -140,6 +150,7 @@ export default function GroundingGuide({ onClose, currentMood = null, moodNote =
           items: group.filter(v => v.trim()),
         })),
       })
+      cueComplete()
       setPhase('done')
     }
   }
@@ -213,6 +224,22 @@ export default function GroundingGuide({ onClose, currentMood = null, moodNote =
                 />
               ))}
             </div>
+            <button
+              onClick={toggleMute}
+              className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center
+                         text-gray-500 hover:bg-gray-200 active:scale-90 transition-all shrink-0"
+              aria-label={muted ? 'Activar audio' : 'Silenciar'}
+            >
+              {muted ? (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 9.75L19.5 12m0 0l2.25 2.25M19.5 12l2.25-2.25M19.5 12l-2.25 2.25m-10.5-6l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+                </svg>
+              )}
+            </button>
             <span className="text-xs text-gray-400 font-medium shrink-0 w-8 text-right">
               {stepIdx + 1}/{STEPS.length}
             </span>

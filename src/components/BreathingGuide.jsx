@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useStats } from '../hooks/useStats'
+import { useBreathingAudio } from '../hooks/useBreathingAudio'
 
 const PHASES = [
   { key: 'inhale',   label: 'Inhala',        duration: 4, instruction: 'Respira profundo por la nariz',   color: 'from-ocean-400 to-calm-400' },
@@ -23,6 +24,7 @@ export default function BreathingGuide({ onClose, currentMood = null, moodNote =
   const loggedRef = useRef(false)   // prevent double-logging per session
 
   const { logExercise } = useStats()
+  const { muted, toggleMute, cue } = useBreathingAudio()
 
   const phase = PHASES[phaseIdx]
 
@@ -83,6 +85,12 @@ export default function BreathingGuide({ onClose, currentMood = null, moodNote =
     })
   }
 
+  // Audio cue at each phase change
+  useEffect(() => {
+    if (!isActive) return
+    cue(phase.key)
+  }, [phaseIdx, isActive])
+
   // Fire once when 4 cycles are completed
   useEffect(() => {
     if (cycles >= 4 && !loggedRef.current) {
@@ -127,16 +135,34 @@ export default function BreathingGuide({ onClose, currentMood = null, moodNote =
           <h2 className="text-white font-bold text-xl">Respiración 4-7-8</h2>
           <p className="text-calm-300 text-sm">Técnica de relajación del Dr. Andrew Weil</p>
         </div>
-        <button
-          onClick={onClose}
-          className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center
-                     text-white hover:bg-white/20 transition-colors active:scale-90"
-          aria-label="Cerrar"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={toggleMute}
+            className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center
+                       text-white hover:bg-white/20 transition-colors active:scale-90"
+            aria-label={muted ? 'Activar audio' : 'Silenciar'}
+          >
+            {muted ? (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 9.75L19.5 12m0 0l2.25 2.25M19.5 12l2.25-2.25M19.5 12l-2.25 2.25m-10.5-6l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+              </svg>
+            )}
+          </button>
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center
+                       text-white hover:bg-white/20 transition-colors active:scale-90"
+            aria-label="Cerrar"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Cycles counter */}

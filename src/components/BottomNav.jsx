@@ -1,3 +1,5 @@
+import { useParticipante } from '../context/ParticipanteContext'
+
 const tabs = [
   {
     id: 'home',
@@ -12,6 +14,7 @@ const tabs = [
   {
     id: 'exercises',
     label: 'Ejercicios',
+    restricted: true,
     icon: (active) => (
       <svg className="w-6 h-6" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={active ? 0 : 1.8} viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round"
@@ -22,6 +25,7 @@ const tabs = [
   {
     id: 'chat',
     label: 'Chat',
+    restricted: true,
     icon: (active) => (
       <svg className="w-6 h-6" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={active ? 0 : 1.8} viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round"
@@ -42,18 +46,22 @@ const tabs = [
 ]
 
 export default function BottomNav({ current, onChange }) {
+  const { esExperimental } = useParticipante()
+
   return (
     <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md
                     bg-white/90 backdrop-blur-md border-t border-calm-100
                     flex items-stretch safe-bottom z-50 shadow-[0_-4px_24px_rgba(0,0,0,0.06)]">
       {tabs.map(tab => {
         const active = current === tab.id
+        const bloqueado = tab.restricted && !esExperimental
         return (
           <button
             key={tab.id}
-            onClick={() => onChange(tab.id)}
-            className={`nav-btn flex-1 ${active ? 'active' : ''}`}
+            onClick={() => { if (!bloqueado) onChange(tab.id) }}
+            className={`nav-btn flex-1 ${active ? 'active' : ''} ${bloqueado ? 'opacity-40 cursor-default' : ''}`}
             aria-label={tab.label}
+            aria-disabled={bloqueado}
           >
             <span className={`transition-transform duration-200 ${active ? 'scale-110' : ''}`}>
               {tab.icon(active)}
@@ -61,7 +69,7 @@ export default function BottomNav({ current, onChange }) {
             <span className={`transition-all duration-200 ${active ? 'text-calm-600 font-semibold' : ''}`}>
               {tab.label}
             </span>
-            {active && (
+            {active && !bloqueado && (
               <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-calm-500 rounded-full" />
             )}
           </button>

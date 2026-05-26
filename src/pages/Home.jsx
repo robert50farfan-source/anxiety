@@ -3,8 +3,11 @@ import BreathingGuide from '../components/BreathingGuide'
 import GroundingGuide from '../components/GroundingGuide'
 import MuscleGuide from '../components/MuscleGuide'
 import MindfulnessGuide from '../components/MindfulnessGuide'
+import EpisodioWizard from '../components/EpisodioWizard'
 import { useStats } from '../hooks/useStats'
 import { useEmergencyContact, contactUrl } from '../hooks/useEmergencyContact'
+import { useEpisodios } from '../hooks/useEpisodios'
+import { useParticipante } from '../context/ParticipanteContext'
 
 const MOODS = [
   { emoji: '😨', label: 'Muy mal',  level: 1 },
@@ -60,9 +63,48 @@ export default function Home() {
   const [selectedMood, setSelectedMood]       = useState(null)
   const [moodNote, setMoodNote]           = useState('')
   const [noteSaved, setNoteSaved]         = useState(false)
+  const [showEpisodioWizard, setShowEpisodioWizard] = useState(false)
+  const [wizardPrefilledEstrategia, setWizardPrefilledEstrategia] = useState(null)
+  const [showPromptEpisodio, setShowPromptEpisodio] = useState(false)
+  const [promptEstrategia, setPromptEstrategia] = useState(null)
 
   const { todayExercises, streak, logMood } = useStats()
   const { contact } = useEmergencyContact()
+  const { guardarEpisodio } = useEpisodios()
+  const { esExperimental } = useParticipante() ?? {}
+
+  const maybeShowPostExercisePrompt = (estrategia) => {
+    const key = 'episodio_prompt_date'
+    const hoy = new Date().toDateString()
+    if (localStorage.getItem(key) === hoy) return
+    localStorage.setItem(key, hoy)
+    setPromptEstrategia(estrategia)
+    setShowPromptEpisodio(true)
+  }
+
+  const guardarBorradorRapido = async (estrategia) => {
+    const ahora = new Date()
+    const fechaInicio = new Date(ahora - 30 * 60000).toISOString()
+    await guardarEpisodio({
+      id: crypto.randomUUID(),
+      tipo_evento: 'ansiedad',
+      fecha_inicio: fechaInicio,
+      intensidad_numerica: 5,
+      intensidad: 'moderada',
+      duracion_minutos: null,
+      en_curso: false,
+      contexto: 'no_especifica',
+      contexto_otro: '',
+      desencadenante: null,
+      sintomas_fisicos: [],
+      sintomas_emocionales: [],
+      estrategias_aplicadas: estrategia ? [estrategia] : [],
+      efectividad_estrategia: null,
+      notas: null,
+      completado: false,
+      paso_actual: 1,
+    })
+  }
 
   const handleMoodSelect = (mood) => {
     setSelectedMood(mood)
@@ -187,6 +229,19 @@ export default function Home() {
           )}
         </div>
 
+        {/* Registrar episodio */}
+        <button
+          onClick={() => { setWizardPrefilledEstrategia(null); setShowEpisodioWizard(true) }}
+          className="w-full py-4 rounded-2xl bg-indigo-600 text-white font-semibold
+                     flex items-center justify-center gap-3
+                     active:scale-95 transition-all duration-200 shadow-md shadow-indigo-200"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Registrar episodio
+        </button>
+
         {/* Daily stats — from localStorage */}
         <div className="grid grid-cols-2 gap-3">
           <div className="card flex flex-col gap-1">
@@ -239,24 +294,61 @@ export default function Home() {
       )}
       {showGrounding && (
         <GroundingGuide
-          onClose={() => setShowGrounding(false)}
+          onClose={() => { setShowGrounding(false); maybeShowPostExercisePrompt('grounding_54321') }}
           currentMood={selectedMood}
           moodNote={moodNote}
         />
       )}
       {showMuscle && (
         <MuscleGuide
-          onClose={() => setShowMuscle(false)}
+          onClose={() => { setShowMuscle(false); maybeShowPostExercisePrompt('relajacion_muscular') }}
           currentMood={selectedMood}
           moodNote={moodNote}
         />
       )}
       {showMindfulness && (
         <MindfulnessGuide
-          onClose={() => setShowMindfulness(false)}
+          onClose={() => { setShowMindfulness(false); maybeShowPostExercisePrompt('mindfulness') }}
           currentMood={selectedMood}
           moodNote={moodNote}
         />
+      )}
+
+      {showEpisodioWizard && (
+        <EpisodioWizard
+          onClose={() => { setShowEpisodioWizard(false); setWizardPrefilledEstrategia(null) }}
+          prefilledEstrategia={wizardPrefilledEstrategia}
+          esExperimental={esExperimental ?? false}
+        />
+      )}
+
+      {showPromptEpisodio && esExperimental && (
+        <div className="fixed inset-0 z-50 flex items-end">
+          <div className="fixed inset-0 bg-black/40" onClick={() => setShowPromptEpisodio(false)} />
+          <div className="relative w-full max-w-md mx-auto bg-white rounded-t-3xl px-5 pt-5 pb-8 shadow-2xl">
+            <p className="font-semibold text-gray-800 mb-1">¿Acabas de atravesar un episodio?</p>
+            <p className="text-sm text-gray-500 mb-4">Registrarlo te ayuda a entender tus patrones de ansiedad.</p>
+            <div className="space-y-2">
+              <button onClick={() => {
+                setShowPromptEpisodio(false)
+                setWizardPrefilledEstrategia(promptEstrategia)
+                setShowEpisodioWizard(true)
+              }} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-semibold text-sm">
+                Sí, registrarlo
+              </button>
+              <button onClick={() => {
+                setShowPromptEpisodio(false)
+                guardarBorradorRapido(promptEstrategia)
+              }} className="w-full py-2.5 bg-gray-100 text-gray-600 rounded-xl text-sm">
+                Más tarde
+              </button>
+              <button onClick={() => setShowPromptEpisodio(false)}
+                className="w-full py-2 text-gray-400 text-sm">
+                No, gracias
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   )

@@ -2,7 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useStats } from '../hooks/useStats'
 import { useEmergencyContact, contactUrl } from '../hooks/useEmergencyContact'
+import { useCrisisLogger } from '../hooks/useCrisisLogger'
 import BreathingGuide from '../components/BreathingGuide'
+import ProfesionalesApoyo from '../components/ProfesionalesApoyo'
 import {
   loadChatHistory,
   saveMessage,
@@ -67,12 +69,13 @@ function differentDay(a, b) {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function PhoneButton({ href, label, primary = false, external = false }) {
+function PhoneButton({ href, label, primary = false, external = false, onClick }) {
   return (
     <a
       href={href}
       target={external ? '_blank' : undefined}
       rel={external ? 'noopener noreferrer' : undefined}
+      onClick={onClick}
       className={`w-full py-2.5 rounded-xl text-sm font-semibold
                   active:scale-95 transition-transform flex items-center justify-center gap-1.5
                   ${primary
@@ -88,7 +91,10 @@ function PhoneButton({ href, label, primary = false, external = false }) {
 }
 
 function CrisisCard({ onBreathing }) {
-  const { contact } = useEmergencyContact()
+  const { contact }   = useEmergencyContact()
+  const { userId }    = useAuth()
+  const { registrar } = useCrisisLogger(userId)
+
   return (
     <div className="mt-2 rounded-2xl bg-red-50 border border-red-200 p-4 space-y-3 animate-fade-in">
       <div className="flex items-start gap-2">
@@ -99,7 +105,7 @@ function CrisisCard({ onBreathing }) {
       </div>
       <div className="space-y-2">
         <button
-          onClick={onBreathing}
+          onClick={() => { onBreathing(); registrar('apertura_pantalla') }}
           className="w-full py-2.5 rounded-xl bg-calm-600 text-white text-sm font-semibold
                      active:scale-95 transition-transform shadow-sm"
         >
@@ -111,11 +117,14 @@ function CrisisCard({ onBreathing }) {
             label={`${contact.via === 'whatsapp' ? 'WhatsApp a' : 'Llamar a'} ${contact.name}`}
             primary
             external={contact.via === 'whatsapp'}
+            onClick={() => registrar('contacto_personal')}
           />
         )}
+        <ProfesionalesApoyo />
         <PhoneButton
-          href="tel:80010100"
+          href="tel:800104100"
           label="Línea de apoyo Bolivia: 800-10-4100"
+          onClick={() => registrar('contacto_linea_nacional')}
         />
       </div>
       <p className="text-xs text-red-500 text-center">
