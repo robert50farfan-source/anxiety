@@ -10,7 +10,6 @@ import {
   saveMessage,
   callChatProxy,
   buildContext,
-  buildSystemPrompt,
 } from '../lib/chatApi'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -273,9 +272,8 @@ export default function Chat() {
     saveMessage(userId, 'user', text)
 
     try {
-      const { userContext, recentEpisodes } = await buildContext(userId)
-      const systemPrompt = buildSystemPrompt(userContext, recentEpisodes)
-      const raw          = await callChatProxy(forClaude, systemPrompt)
+      const context = await buildContext(userId)
+      const raw     = await callChatProxy(forClaude, context)
 
       const hasCrisis = raw.includes('[CRISIS_BLOCK]')
       const contenido = raw.replace('[CRISIS_BLOCK]', '').trim()

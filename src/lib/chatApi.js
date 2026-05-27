@@ -1,57 +1,8 @@
 import { supabase } from './supabase'
 
-// ─── System Prompt ────────────────────────────────────────────────────────────
-
-const SYSTEM_PROMPT_TEMPLATE = `Eres el asistente de apoyo emocional de la app Calma, \
-diseñada para estudiantes universitarios con ansiedad.
-
-ROL Y LÍMITES:
-- Eres un apoyo emocional, NO un terapeuta ni médico
-- Nunca diagnosticas ni recetas medicamentos
-- Complementas, no reemplazas, la ayuda profesional
-- Si el usuario necesita ayuda urgente, siempre derivas
-
-PERSONALIDAD:
-- Cálido, empático, paciente y sin juicios
-- Usas lenguaje simple y cercano, nunca clínico
-- Validas la emoción ANTES de ofrecer cualquier técnica
-- Respuestas cortas (3-4 oraciones máximo por mensaje)
-- Nunca dices "entiendo perfectamente cómo te sientes"
-- Sí dices frases como "tiene sentido que te sientas así"
-
-FLUJO DE CONVERSACIÓN:
-1. Primero escucha y valida
-2. Luego pregunta qué necesita (desahogarse, técnica, info)
-3. Ofrece ayuda concreta solo cuando el usuario la pide
-
-DETECCIÓN DE CRISIS:
-Si el usuario escribe frases como "no puedo más", "quiero desaparecer", \
-"hacerme daño", "no tiene sentido seguir", "quiero morir" o similares:
-- Responde con calma, sin alarmar
-- Valida que está pasando algo muy difícil
-- Incluye OBLIGATORIAMENTE el marcador literal [CRISIS_BLOCK] al final \
-  del mensaje, sin excepciones y sin modificarlo
-
-TÉCNICAS DISPONIBLES EN LA APP (sección Ejercicios):
-- Respiración 4-7-8 (para crisis inmediatas)
-- Grounding 5-4-3-2-1 (para disociación o terrores nocturnos)
-- Relajación muscular progresiva (para tensión acumulada)
-- Mindfulness (para ansiedad generalizada)
-- Visualización guiada (para antes de dormir)
-
-CONTEXTO DEL USUARIO:
-{user_context}
-
-HISTORIAL RECIENTE DE EPISODIOS:
-{recent_episodes}`
-
-export function buildSystemPrompt(userContext, recentEpisodes) {
-  return SYSTEM_PROMPT_TEMPLATE
-    .replace('{user_context}', userContext || 'Sin datos disponibles')
-    .replace('{recent_episodes}', recentEpisodes || 'Sin episodios recientes')
-}
-
 // ─── User context builder ─────────────────────────────────────────────────────
+// El system prompt TCC vive en la Edge Function (server-side).
+// Aquí solo construimos el contexto estructurado que se envía como datos.
 
 const MOOD_LABELS = ['', 'Muy mal', 'Mal', 'Regular', 'Bien', 'Muy bien']
 
@@ -65,19 +16,10 @@ function loadLocalStats() {
 }
 
 export async function buildContext(userId) {
-  const stats   = loadLocalStats()
-  const today   = getTodayKey()
-  const moods   = stats[today]?.moods ?? []
+  const stats    = loadLocalStats()
+  const today    = getTodayKey()
+  const moods    = stats[today]?.moods ?? []
   const lastMood = moods[moods.length - 1]
-
-  const ctxLines = []
-
-  if (lastMood) {
-    ctxLines.push(`Estado emocional hoy: ${MOOD_LABELS[lastMood.level]} (${lastMood.level}/5)`)
-    if (lastMood.note) ctxLines.push(`Desencadenante: "${lastMood.note}"`)
-  } else {
-    ctxLines.push('Estado emocional hoy: No registrado')
-  }
 
   // Streak from localStorage
   let streak = 0
@@ -89,9 +31,15 @@ export async function buildContext(userId) {
     streak++
     cursor.setDate(cursor.getDate() - 1)
   }
-  ctxLines.push(`Días de racha activos: ${streak}`)
 
-  let recentEpisodes = 'Sin episodios registrados esta semana'
+  const context = {
+    mood:             lastMood ? `${MOOD_LABELS[lastMood.level]} (${lastMood.level}/5)` : null,
+    moodNote:         lastMood?.note ?? null,
+    streak,
+    ejerciciosSemana: null,
+    tecnicaMasUsada:  null,
+    episodiosRecientes: null,
+  }
 
   if (supabase && userId) {
     try {
@@ -107,15 +55,13 @@ export async function buildContext(userId) {
         .limit(10)
 
       if (eps?.length) {
-        ctxLines.push(`Ejercicios esta semana: ${eps.length}`)
+        context.ejerciciosSemana = eps.length
 
-        // Most used technique
         const counts = {}
         eps.forEach(e => { counts[e.tecnica_usada] = (counts[e.tecnica_usada] ?? 0) + 1 })
-        const [[top]] = Object.entries(counts).sort((a, b) => b[1] - a[1])
-        ctxLines.push(`Técnica más usada: ${top}`)
+        context.tecnicaMasUsada = Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0]
 
-        recentEpisodes = eps.slice(0, 5).map(e =>
+        context.episodiosRecientes = eps.slice(0, 5).map(e =>
           `- ${e.fecha.slice(0, 10)}: ${e.tecnica_usada}` +
           (e.estado_emocional ? `, ánimo ${e.estado_emocional}/5` : '')
         ).join('\n')
@@ -123,10 +69,7 @@ export async function buildContext(userId) {
     } catch { /* silent — context is optional */ }
   }
 
-  return {
-    userContext:     ctxLines.join('\n'),
-    recentEpisodes,
-  }
+  return context
 }
 
 // ─── Supabase chat history ────────────────────────────────────────────────────
@@ -164,11 +107,11 @@ export async function saveMessage(userId, rol, contenido) {
 
 // ─── Claude API (via Supabase Edge Function) ──────────────────────────────────
 
-export async function callChatProxy(messages, systemPrompt) {
+export async function callChatProxy(messages, context) {
   if (!supabase) throw new Error('supabase-unavailable')
 
   const { data, error } = await supabase.functions.invoke('chat-proxy', {
-    body: { messages, systemPrompt },
+    body: { messages, context },
   })
 
   if (error) throw error
