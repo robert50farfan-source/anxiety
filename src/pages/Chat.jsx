@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useStats } from '../hooks/useStats'
 import { useEmergencyContact, contactUrl } from '../hooks/useEmergencyContact'
@@ -11,6 +11,7 @@ import {
   callChatProxy,
   buildContext,
 } from '../lib/chatApi'
+import { useChatVoice } from '../hooks/useChatVoice'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -226,6 +227,19 @@ export default function Chat() {
   const [showBreathing, setShowBreathing]   = useState(false)
   const bottomRef = useRef(null)
 
+  const handleTranscript = useCallback((text, isFinal) => {
+    setInput(text)
+  }, [])
+
+  const {
+    voiceEnabled, listening, speaking, sttSupported,
+    toggleVoice, startListening, stopListening,
+    speakText, cancelSpeaking,
+  } = useChatVoice({ onTranscript: handleTranscript })
+
+  const voiceEnabledRef = useRef(voiceEnabled)
+  useEffect(() => { voiceEnabledRef.current = voiceEnabled }, [voiceEnabled])
+
   // Load history once userId is ready
   useEffect(() => {
     if (!userId) return
@@ -280,7 +294,8 @@ export default function Chat() {
       const fecha     = new Date().toISOString()
 
       setMsgs(prev => [...prev, { id: uid(), rol: 'assistant', contenido, fecha, hasCrisis }])
-      saveMessage(userId, 'assistant', raw) // store with tag for future history parsing
+      saveMessage(userId, 'assistant', raw)
+      if (voiceEnabledRef.current && !hasCrisis) speakText(contenido)
     } catch {
       setMsgs(prev => [...prev, { ...FALLBACK_ERROR, id: uid(), fecha: new Date().toISOString() }])
     } finally {
@@ -323,13 +338,30 @@ export default function Chat() {
                             flex items-center justify-center text-xl shrink-0">
               🤗
             </div>
-            <div>
+            <div className="flex-1">
               <h1 className="font-bold text-gray-800">Apoyo emocional</h1>
               <div className="flex items-center gap-1.5">
                 <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
                 <span className="text-xs text-gray-400">Calma · Asistente de bienestar</span>
               </div>
             </div>
+            <button
+              onClick={toggleVoice}
+              className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors shrink-0
+                ${voiceEnabled ? 'bg-calm-100 text-calm-700' : 'bg-gray-100 text-gray-400'}`}
+              aria-label={voiceEnabled ? 'Desactivar modo voz' : 'Activar modo voz'}
+              title={voiceEnabled ? 'Modo voz activado' : 'Activar modo voz'}
+            >
+              {voiceEnabled ? (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 9.75L19.5 12m0 0l2.25 2.25M19.5 12l2.25-2.25M19.5 12l-2.25 2.25m-10.5-6l4.72-4.72a.75.75 0 011.28.531V19.94a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+                </svg>
+              )}
+            </button>
           </div>
         </div>
 
@@ -356,20 +388,67 @@ export default function Chat() {
           )}
         </div>
 
+        {/* Speaking indicator */}
+        {speaking && (
+          <div className="px-4 py-2 bg-calm-50 border-t border-calm-100 shrink-0 animate-fade-in">
+            <div className="flex items-center justify-between bg-white rounded-xl border border-calm-200 px-3 py-1.5">
+              <div className="flex items-center gap-2">
+                <div className="flex gap-0.5 items-center">
+                  {[0, 1, 2, 3].map(i => (
+                    <span key={i} className="w-0.5 bg-calm-500 rounded-full animate-pulse"
+                      style={{ height: `${8 + (i % 2) * 6}px`, animationDelay: `${i * 0.15}s` }} />
+                  ))}
+                </div>
+                <span className="text-xs text-calm-700">Leyendo en voz alta…</span>
+              </div>
+              <button onClick={cancelSpeaking} className="text-gray-400 hover:text-gray-600 p-1"
+                aria-label="Detener lectura">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Input */}
         <div className="px-4 pb-safe pb-4 pt-2 border-t border-calm-100 bg-calm-50 shrink-0">
           <div className="flex gap-2 items-end">
+            {voiceEnabled && sttSupported && (
+              <button
+                onClick={listening ? stopListening : startListening}
+                disabled={isTyping || speaking}
+                className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0
+                           transition-all active:scale-90 disabled:opacity-40
+                  ${listening
+                    ? 'bg-red-500 text-white shadow-md animate-pulse-record'
+                    : 'bg-calm-100 text-calm-600 hover:bg-calm-200'}`}
+                aria-label={listening ? 'Detener grabación' : 'Dictar mensaje'}
+              >
+                {listening ? (
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <rect x="6" y="6" width="12" height="12" rx="2" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+                  </svg>
+                )}
+              </button>
+            )}
             <textarea
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKey}
-              placeholder="Escribe cómo te sientes..."
+              placeholder={listening ? 'Escuchando…' : 'Escribe cómo te sientes...'}
               rows={1}
               disabled={isTyping}
-              className="flex-1 resize-none rounded-2xl border border-calm-200 bg-white px-4 py-3
+              readOnly={listening}
+              className={`flex-1 resize-none rounded-2xl border bg-white px-4 py-3
                          text-sm text-gray-800 placeholder-gray-400 focus:outline-none
                          focus:ring-2 focus:ring-calm-400 focus:border-transparent
-                         max-h-28 overflow-y-auto disabled:opacity-50 transition-opacity"
+                         max-h-28 overflow-y-auto disabled:opacity-50 transition-all
+                         ${listening ? 'border-red-300 bg-red-50' : 'border-calm-200'}`}
               style={{ lineHeight: '1.5' }}
             />
             <button

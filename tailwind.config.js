@@ -53,6 +53,10 @@ export default {
           from: { opacity: '0', transform: 'translateY(10px)' },
           to:   { opacity: '1', transform: 'translateY(0)'    },
         },
+        pulseRecord: {
+          '0%, 100%': { boxShadow: '0 0 0 0 rgba(239,68,68,0.5)' },
+          '50%':      { boxShadow: '0 0 0 10px rgba(239,68,68,0)' },
+        },
       },
       animation: {
         'breathe-in':  'breatheIn  4s ease-in-out forwards',
@@ -60,6 +64,7 @@ export default {
         'breathe-out': 'breatheOut 8s ease-in-out forwards',
         'pulse-ring':  'pulseRing  2s ease-out infinite',
         'fade-in':     'fadeIn     0.4s ease-out both',
+        'pulse-record': 'pulseRecord 1.5s ease-in-out infinite',
       },
     },
   },
