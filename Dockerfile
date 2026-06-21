@@ -8,6 +8,7 @@ RUN npm ci
 
 COPY . .
 
+# cache-bust: 2026-06-21
 # Build-time env vars (injected by Dokploy as build args)
 ARG VITE_SUPABASE_URL
 ARG VITE_SUPABASE_PUBLISHABLE_KEY
