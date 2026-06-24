@@ -79,16 +79,23 @@ export function useChatVoice({ onTranscript, lang = 'es-ES' } = {}) {
     setSpeaking(true)
 
     try {
-      if (!supabase) throw new Error('no-supabase')
+      const sbUrl = import.meta.env.VITE_SUPABASE_URL
+      const sbKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+      if (!sbUrl || !sbKey) throw new Error('no-config')
 
-      const { data, error } = await supabase.functions.invoke('tts-proxy', {
-        body: { text },
-        responseType: 'blob',
+      const res = await fetch(`${sbUrl}/functions/v1/tts-proxy`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': sbKey,
+          'Authorization': `Bearer ${sbKey}`,
+        },
+        body: JSON.stringify({ text }),
       })
 
-      if (error) throw error
+      if (!res.ok) throw new Error(`tts-${res.status}`)
 
-      const blob = data instanceof Blob ? data : new Blob([data], { type: 'audio/mpeg' })
+      const blob = await res.blob()
       const url  = URL.createObjectURL(blob)
       const audio = new Audio(url)
       audioRef.current = audio
