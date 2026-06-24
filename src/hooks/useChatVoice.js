@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { supabase } from '../lib/supabase'
 
 const SpeechRecognition = typeof window !== 'undefined'
   ? window.SpeechRecognition || window.webkitSpeechRecognition
@@ -11,22 +12,21 @@ export function useChatVoice({ onTranscript, lang = 'es-ES' } = {}) {
   const [sttSupported]                  = useState(!!SpeechRecognition)
 
   const recognitionRef = useRef(null)
+  const audioRef       = useRef(null)
   const synthRef       = useRef(typeof speechSynthesis !== 'undefined' ? speechSynthesis : null)
-
-  const getVoice = useCallback(() => {
-    const voices = synthRef.current?.getVoices() ?? []
-    return voices.find(v => v.lang.startsWith('es')) ?? null
-  }, [])
 
   // ── STT ──────────────────────────────────────────────────────────────────────
 
   const startListening = useCallback(() => {
     if (!SpeechRecognition || listening) return
 
-    if (synthRef.current?.speaking) {
-      synthRef.current.cancel()
+    // Stop any active audio before listening
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current = null
       setSpeaking(false)
     }
+    synthRef.current?.cancel()
 
     const recognition = new SpeechRecognition()
     recognition.lang            = lang
@@ -52,9 +52,9 @@ export function useChatVoice({ onTranscript, lang = 'es-ES' } = {}) {
     setListening(false)
   }, [])
 
-  // ── TTS ──────────────────────────────────────────────────────────────────────
+  // ── TTS (ElevenLabs via Edge Function, fallback to native) ───────────────────
 
-  const speakText = useCallback((text) => {
+  const speakNative = useCallback((text) => {
     if (!synthRef.current || !text) return
     synthRef.current.cancel()
 
@@ -63,17 +63,59 @@ export function useChatVoice({ onTranscript, lang = 'es-ES' } = {}) {
     utter.rate   = 0.85
     utter.pitch  = 1.0
     utter.volume = 1.0
-    const v = getVoice()
+    const voices = synthRef.current.getVoices()
+    const v = voices.find(v => v.lang.startsWith('es'))
     if (v) utter.voice = v
 
-    utter.onend  = () => setSpeaking(false)
-    utter.onerror = () => setSpeaking(false)
+    utter.onend   = () => setSpeaking(false)
+    utter.onerror  = () => setSpeaking(false)
 
     synthRef.current.speak(utter)
     setSpeaking(true)
-  }, [lang, getVoice])
+  }, [lang])
+
+  const speakText = useCallback(async (text) => {
+    if (!text) return
+    setSpeaking(true)
+
+    try {
+      if (!supabase) throw new Error('no-supabase')
+
+      const { data, error } = await supabase.functions.invoke('tts-proxy', {
+        body: { text },
+        responseType: 'blob',
+      })
+
+      if (error) throw error
+
+      const blob = data instanceof Blob ? data : new Blob([data], { type: 'audio/mpeg' })
+      const url  = URL.createObjectURL(blob)
+      const audio = new Audio(url)
+      audioRef.current = audio
+
+      audio.onended = () => {
+        URL.revokeObjectURL(url)
+        audioRef.current = null
+        setSpeaking(false)
+      }
+      audio.onerror = () => {
+        URL.revokeObjectURL(url)
+        audioRef.current = null
+        setSpeaking(false)
+      }
+
+      await audio.play()
+    } catch {
+      // Fallback to native SpeechSynthesis
+      speakNative(text)
+    }
+  }, [speakNative])
 
   const cancelSpeaking = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current = null
+    }
     synthRef.current?.cancel()
     setSpeaking(false)
   }, [])
@@ -85,6 +127,10 @@ export function useChatVoice({ onTranscript, lang = 'es-ES' } = {}) {
       if (prev) {
         recognitionRef.current?.abort()
         setListening(false)
+        if (audioRef.current) {
+          audioRef.current.pause()
+          audioRef.current = null
+        }
         synthRef.current?.cancel()
         setSpeaking(false)
       }
@@ -97,6 +143,10 @@ export function useChatVoice({ onTranscript, lang = 'es-ES' } = {}) {
   useEffect(() => {
     return () => {
       recognitionRef.current?.abort()
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current = null
+      }
       synthRef.current?.cancel()
     }
   }, [])
