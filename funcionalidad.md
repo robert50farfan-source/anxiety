@@ -5,8 +5,13 @@
 Plataforma web progresiva (PWA) de salud mental para **estudiantes universitarios con ansiedad**, diseñada como instrumento de investigación clínica. Combina intervenciones de **Terapia Cognitivo-Conductual (TCC)** mediadas por IA, técnicas somáticas guiadas y seguimiento longitudinal de síntomas mediante el **Inventario de Ansiedad de Beck (BAI)**.
 
 **Contexto de investigación:** Ensayo aleatorizado controlado de 12 semanas con:
-- **Grupo experimental:** acceso a chat IA con TCC + todas las funciones
-- **Grupo control:** acceso a ejercicios básicos sin IA
+- **Grupo experimental:** acceso a chat IA con TCC (texto y voz) + todas las funciones
+- **Grupo control:** las mismas funciones (ejercicios, registro de episodios, BAI/SWLS/SUS, gestión de crisis) **sin el chat IA**
+
+Diferencias entre grupos implementadas en la app:
+- Pestaña de chat bloqueada para el grupo control (y rechazada también en el servidor)
+- Opciones de estrategias distintas en el registro de episodios (ver sección 4)
+- Tras un ejercicio, solo al grupo experimental se le sugiere registrar un episodio (máx. una vez al día)
 
 ---
 
@@ -32,7 +37,7 @@ Plataforma web progresiva (PWA) de salud mental para **estudiantes universitario
 
 ```
 Código participante → Auth anónima Supabase
-→ Consentimiento informado (v1.0, auditable con IP hash + user-agent)
+→ Consentimiento informado (v1.0, auditable: versión, fecha, user-agent y texto aceptado)
 → Evaluación inicial obligatoria: BAI basal → SWLS basal
   (bloquea el acceso desde el día 0 hasta completar ambas)
 → Acceso a app
@@ -47,7 +52,8 @@ Código participante → Auth anónima Supabase
 
 ### 2. Home — Panel de Estado Emocional
 
-- Selector de estado emocional diario (1-5 con emojis)
+- Selector de estado emocional diario (1-5 con emojis) con nota opcional
+- Tarjeta "Evaluación de N semanas" cuando hay una evaluación de seguimiento pendiente (semanas 8 y 12)
 - Botón **"Estoy en crisis"** → lanza guía de respiración inmediatamente
 - Acceso rápido a 3 ejercicios frecuentes
 - Botón de registro de episodio
@@ -68,16 +74,17 @@ Todos los ejercicios registran duración, mood asociado y actualización de rach
 
 ---
 
-### 4. Registro de Episodios (Wizard 6 pasos)
+### 4. Registro de Episodios de Ansiedad (asistente de 5 pasos)
 
-1. Tipo de evento + intensidad (1-10)
-2. Contexto (casa, aula, examen, social, trabajo, etc.)
-3. Desencadenante (texto libre)
-4. Síntomas físicos (9 opciones, multi-select)
-5. Síntomas emocionales (7 opciones)
-6. Estrategias aplicadas + efectividad (1-5)
+1. Tipo de episodio (ansiedad / ataque de pánico) y momento de inicio
+2. Intensidad (1-10, agrupada en leve / moderada / severa) y duración
+3. Contexto (casa, aula, examen, laboratorio, transporte, situación social, trabajo, otro, prefiero no decir) + desencadenante (texto libre, opcional)
+4. Síntomas físicos (9 opciones + otro) y emocionales (6 opciones + otro), selección múltiple
+5. Estrategias aplicadas + efectividad (1-5: nada … mucho) y notas
 
-> Las opciones de estrategias difieren entre grupos: el experimental incluye `chat_ia`, el control no.
+> Las opciones de estrategias difieren entre grupos:
+> - **Experimental:** técnicas de la app (respiración 4-7-8, grounding, relajación muscular, mindfulness, visualización), chat IA, contacto profesional, contacto personal, otra, nada
+> - **Control:** respirar por su cuenta, distraerse, hablar con alguien, esperar, buscar información, contacto profesional, contacto personal, otra, nada
 
 Auto-guardado en cada paso (localStorage + Supabase). Permite retomar, editar y borrar.
 
@@ -85,11 +92,14 @@ Auto-guardado en cada paso (localStorage + Supabase). Permite retomar, editar y 
 
 ### 5. Chat IA con TCC
 
-- Sistema de chat con **Claude (haiku-4-5)**, máximo 512 tokens por respuesta
-- System prompt definido server-side (no modificable por el cliente)
-- **Contexto insertado dinámicamente:** mood del día, racha, ejercicios de la semana, episodios recientes, técnica más usada
+- Sistema de chat con **Claude (claude-haiku-4-5-20251001)**, máximo 512 tokens por respuesta
+- System prompt TCC definido server-side (no visible ni modificable por el cliente); cualquier cambio constituye una modificación de la variable independiente
+- **Historial:** el servidor lee los últimos 10 mensajes de la BD y guarda cada intercambio (el cliente no puede alterar la conversación)
+- **Contexto insertado dinámicamente** (armado en el servidor): estado emocional del día y nota, racha, ejercicios de la última semana y técnica más usada, y episodios de ansiedad registrados en la última semana (tipo, intensidad, contexto, desencadenante, efectividad)
 - Estilo: validación emocional antes de intervención, preguntas socráticas, reformulación equilibrada
-- **Detección de crisis:** frases clave → marcador `[CRISIS_BLOCK]` → UI muestra `CrisisCard` con recursos de emergencia
+- **Detección de crisis:** el modelo añade el marcador `[CRISIS_BLOCK]`; si no lo hace pero el mensaje contiene frases de riesgo, el servidor lo añade igualmente (respaldo por palabras clave) → UI muestra `CrisisCard` con recursos de emergencia; cada detección se registra como evento de crisis
+- **Modo voz:** dictado por micrófono (reconocimiento de voz del navegador) y lectura en voz alta de las respuestas (ElevenLabs, con la voz del navegador como respaldo)
+- Límites: 60 mensajes por participante cada 24 h; 2000 caracteres por mensaje
 - Solo disponible para el grupo experimental
 
 ---
@@ -102,7 +112,7 @@ Auto-guardado en cada paso (localStorage + Supabase). Permite retomar, editar y 
 
 | Días | Tipo |
 |------|------|
-| 0-3 | `basal` |
+| 0-2 (o primera medición) | `basal` |
 | 25-35 | `intermedia_4sem` |
 | 53-63 | `final_8sem` |
 | 81-91 | `seguimiento_12sem` |
@@ -110,6 +120,8 @@ Auto-guardado en cada paso (localStorage + Supabase). Permite retomar, editar y 
 
 - Alertas automáticas: basal pendiente, score grave, tendencia ascendente (+5 pts)
 - Primera medición siempre `basal` (con `ventana_esperada` solo si fue en días 0–2); duplicados de un tipo programado pasan a `voluntaria`
+- El participante **sí ve** su puntaje BAI y la categoría al terminar (a diferencia de SWLS y SUS)
+- Sin BAI basal al día 7, el participante pasa a estado `inactivo_sin_basal` y se avisa al investigador
 
 ---
 
@@ -166,14 +178,22 @@ Auto-guardado en cada paso (localStorage + Supabase). Permite retomar, editar y 
 ### 8. Gestión de Crisis
 
 ```
-Usuario presiona "Crisis" / IA detecta palabras clave
-→ Guía de respiración inmediata
-→ CrisisCard: botón ejercicio + WhatsApp/llamada a contacto personal
-   + directorio de profesionales locales
+Usuario presiona "Estoy en crisis"  → Guía de respiración inmediata
+Chat detecta crisis (modelo o palabras clave) → CrisisCard en la conversación
+   CrisisCard: botón de respiración + WhatsApp/llamada a contacto personal
+   + directorio de profesionales de apoyo
    + línea nacional (800-10-4100 Bolivia)
-→ Edge Function notifica al investigador vía email (Resend)
-→ Evento registrado en BD
+→ Cada acción queda registrada en eventos_crisis
+→ Email al investigador (Resend) al abrir la pantalla de crisis o contactar a un profesional
 ```
+
+| Evento registrado | ¿Email al investigador? |
+|---|---|
+| Apertura de pantalla de crisis | Sí |
+| Contacto a profesional de apoyo | Sí |
+| Contacto a persona de confianza | No |
+| Llamada a la línea nacional | No |
+| Crisis detectada en el chat | No (visible en el panel) |
 
 ---
 
@@ -204,12 +224,15 @@ Usuario presiona "Crisis" / IA detecta palabras clave
 
 ## Seguridad y Auditabilidad
 
-- Auth anónima trazable por código participante
-- **Row-Level Security (RLS)** en todas las tablas: participantes ven solo sus datos
-- Funciones `SECURITY DEFINER` para operaciones críticas
-- Consentimiento auditado: versión, timestamp, IP hash, user-agent, texto íntegro aceptado
-- Bloqueo de acceso si consentimiento no vigente
+- Auth anónima trazable por código participante (sin nombre ni correo del participante)
+- **Row-Level Security (RLS)** en las tablas de datos: cada participante ve solo los suyos; el investigador y la tutora leen todo (las conversaciones del chat, solo el investigador)
+- Funciones `SECURITY DEFINER` para operaciones críticas (asignación de código, consentimiento, tipificación de mediciones)
+- Puntajes de SWLS y SUS calculados en la BD y fecha de medición fijada por el servidor (el cliente no puede alterarlos)
+- Edge Functions protegidas: las del participante exigen su sesión (JWT); la del cron exige un secreto
+- Consentimiento auditado: versión, timestamp, user-agent y texto íntegro aceptado
+- Bloqueo de acceso si el consentimiento no está vigente
+- Auditoría de acciones del panel admin (incluye la consulta y exportación de conversaciones)
 
 ---
 
-*PWA con Service Worker Workbox — funciona offline para ejercicios y registro local.*
+*PWA con Service Worker Workbox — los ejercicios funcionan offline; los cuestionarios (BAI, SWLS, SUS) y el chat requieren conexión.*
