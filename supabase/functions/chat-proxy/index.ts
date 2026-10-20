@@ -113,6 +113,16 @@ Deno.serve(async (req: Request) => {
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
+    // Solo el grupo experimental accede al chat (variable independiente del estudio)
+    const { data: participacion } = await supabase
+      .from('mi_participacion')
+      .select('grupo_interno, estado')
+      .maybeSingle()
+    if (participacion?.grupo_interno !== 'experimental' || participacion?.estado === 'retirado') {
+      return new Response(JSON.stringify({ error: 'No disponible para este participante' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
     // El cliente envía mensajes + contexto estructurado (nunca el system prompt)
     const { messages, context = {} } = await req.json()
 

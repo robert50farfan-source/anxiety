@@ -81,14 +81,18 @@ export function useChatVoice({ onTranscript, lang = 'es-ES' } = {}) {
     try {
       const sbUrl = import.meta.env.VITE_SUPABASE_URL
       const sbKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
-      if (!sbUrl || !sbKey) throw new Error('no-config')
+      if (!sbUrl || !sbKey || !supabase) throw new Error('no-config')
+
+      // tts-proxy exige el JWT del usuario, no la publishable key
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) throw new Error('no-session')
 
       const res = await fetch(`${sbUrl}/functions/v1/tts-proxy`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'apikey': sbKey,
-          'Authorization': `Bearer ${sbKey}`,
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({ text }),
       })

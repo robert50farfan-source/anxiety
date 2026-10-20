@@ -23,19 +23,24 @@ export function useCrisisLogger(userId) {
       .catch(() => {})
 
     // Notificar al investigador vía Edge Function para eventos relevantes
+    // notificar-crisis exige el JWT del usuario; el user_id lo toma del token
     if (NOTIF_URL && TIPOS_CON_NOTIF.has(tipo)) {
-      fetch(NOTIF_URL, {
-        method:  'POST',
-        headers: {
-          'Content-Type':  'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
-        body: JSON.stringify({
-          tipo_evento:    tipo,
-          user_id:        userId,
-          profesional_id: profesionalId,
-        }),
-      }).catch(() => {}) // non-blocking, nunca falla el flujo del participante
+      supabase.auth.getSession()
+        .then(({ data: { session } }) => {
+          if (!session?.access_token) return
+          return fetch(NOTIF_URL, {
+            method:  'POST',
+            headers: {
+              'Content-Type':  'application/json',
+              'Authorization': `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              tipo_evento:    tipo,
+              profesional_id: profesionalId,
+            }),
+          })
+        })
+        .catch(() => {}) // non-blocking, nunca falla el flujo del participante
     }
   }
 

@@ -1,3 +1,5 @@
+import { createClient } from 'npm:@supabase/supabase-js@2'
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -7,19 +9,40 @@ const corsHeaders = {
 const ELEVENLABS_API_KEY = Deno.env.get('ELEVENLABS_API_KEY') ?? ''
 const ELEVENLABS_VOICE_ID = Deno.env.get('ELEVENLABS_VOICE_ID') ?? '0wc8O2YR1sPXOcb27h7k'
 
+function jsonError(error: string, status: number) {
+  return new Response(JSON.stringify({ error }), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  })
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    const { text } = await req.json()
-    if (!text || typeof text !== 'string') {
-      return new Response(JSON.stringify({ error: 'text is required' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+    // Verificar auth — rechaza llamadas sin sesión válida (protege créditos de ElevenLabs)
+    const authHeader = req.headers.get('Authorization') ?? ''
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    )
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return jsonError('No autorizado', 401)
+
+    // La voz solo se usa en el chat, exclusivo del grupo experimental
+    const { data: participacion } = await supabase
+      .from('mi_participacion')
+      .select('grupo_interno, estado')
+      .maybeSingle()
+    if (participacion?.grupo_interno !== 'experimental' || participacion?.estado === 'retirado') {
+      return jsonError('No disponible para este participante', 403)
     }
+
+    const { text } = await req.json()
+    if (!text || typeof text !== 'string') return jsonError('text is required', 400)
 
     // Limit text length to control costs (~500 chars max per request)
     const trimmed = text.slice(0, 500)
@@ -48,10 +71,7 @@ Deno.serve(async (req) => {
     if (!response.ok) {
       const err = await response.text()
       console.error('ElevenLabs error:', response.status, err)
-      return new Response(JSON.stringify({ error: 'tts-failed' }), {
-        status: 502,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      return jsonError('tts-failed', 502)
     }
 
     const audioBuffer = await response.arrayBuffer()
@@ -65,9 +85,6 @@ Deno.serve(async (req) => {
     })
   } catch (e) {
     console.error('tts-proxy error:', e)
-    return new Response(JSON.stringify({ error: 'internal' }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
+    return jsonError('internal', 500)
   }
 })

@@ -2,6 +2,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 
 const RESEND_API_KEY          = Deno.env.get('RESEND_API_KEY') ?? ''
 const SUPABASE_URL            = Deno.env.get('SUPABASE_URL') ?? ''
+const SUPABASE_ANON_KEY       = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
 const SUPABASE_SERVICE_ROLE   = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 const FROM_EMAIL              = Deno.env.get('NOTIF_FROM_EMAIL') ?? 'notificaciones@resend.dev'
 
@@ -30,12 +31,22 @@ Deno.serve(async (req: Request) => {
     return new Response('Method not allowed', { status: 405 })
   }
 
+  // Verificar auth — el user_id sale del JWT, nunca del body (evita avisos falsos)
+  const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } },
+  })
+  const { data: { user } } = await authClient.auth.getUser()
+  if (!user) {
+    return new Response(JSON.stringify({ ok: false, error: 'unauthorized' }), { status: 401 })
+  }
+
   const body = await req.json().catch(() => null)
-  if (!body?.tipo_evento || !body?.user_id) {
+  if (!body?.tipo_evento) {
     return new Response(JSON.stringify({ ok: false, error: 'bad_request' }), { status: 400 })
   }
 
-  const { tipo_evento, user_id, profesional_id } = body
+  const { tipo_evento, profesional_id } = body
+  const user_id = user.id
 
   if (!TIPOS_NOTIFICABLES.has(tipo_evento)) {
     return new Response(JSON.stringify({ ok: true, skipped: true }), { status: 200 })
