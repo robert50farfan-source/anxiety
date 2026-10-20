@@ -1,14 +1,14 @@
 import { useState } from 'react'
 import BAI from '../pages/BAI'
 import CuestionarioLikert from './CuestionarioLikert'
-import { SWLS } from '../config/escalas'
+import { SWLS, SUS } from '../config/escalas'
 
 // ─── Flujo de evaluación ──────────────────────────────────────────────────────
 // Presenta varios cuestionarios seguidos como una sola evaluación
 // (p. ej. basal: BAI → SWLS; semana 8: BAI → SWLS → SUS).
-// `pasos`: ids en orden ('bai' | 'swls'). `onTerminar` se llama al acabar o al cerrar.
+// `pasos`: ids en orden ('bai' | 'swls' | 'sus'). `onTerminar` se llama al acabar o al cerrar.
 
-const ESCALAS = { swls: SWLS }
+const ESCALAS = { swls: SWLS, sus: SUS }
 
 export default function EvaluacionFlujo({ pasos, onTerminar }) {
   const [idx, setIdx] = useState(0)

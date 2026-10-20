@@ -10,7 +10,7 @@ const corsHeaders = {
 // Instrumentos de cada ventana de seguimiento (un solo aviso por ventana)
 const INSTRUMENTOS: Record<string, string[]> = {
   intermedia_4sem:   ['resultados_bai'],
-  final_8sem:        ['resultados_bai', 'resultados_swls'],
+  final_8sem:        ['resultados_bai', 'resultados_swls', 'resultados_sus'],
   seguimiento_12sem: ['resultados_bai', 'resultados_swls'],
 }
 
@@ -111,7 +111,7 @@ Deno.serve(async (req: Request) => {
         notif = {
           title: 'AnxietyApp',
           body: esConjunta(tipoMap[diasDesdeInicio])
-            ? 'Pronto será momento de tu evaluación de seguimiento (2 cuestionarios breves). Prepárate para completarla esta semana.'
+            ? 'Pronto será momento de tu evaluación de seguimiento (cuestionarios breves). Prepárate para completarla esta semana.'
             : 'Pronto será momento de tu siguiente cuestionario BAI. Prepárate para completarlo esta semana.',
           url: '/',
         }
@@ -123,7 +123,7 @@ Deno.serve(async (req: Request) => {
           notif = esConjunta(tipo)
             ? {
                 title: 'AnxietyApp — Evaluación de seguimiento',
-                body: 'Hoy puedes completar tu evaluación de seguimiento. Son cuestionarios breves, unos 12 minutos en total.',
+                body: 'Hoy puedes completar tu evaluación de seguimiento. Son cuestionarios breves, unos 15 minutos en total.',
                 url: '/',
               }
             : {

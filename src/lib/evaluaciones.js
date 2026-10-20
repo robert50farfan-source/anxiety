@@ -14,7 +14,7 @@ export const VENTANAS = {
 export const INSTRUMENTOS_POR_VENTANA = {
   basal:             ['bai', 'swls'],
   intermedia_4sem:   ['bai'],
-  final_8sem:        ['bai', 'swls'],
+  final_8sem:        ['bai', 'swls', 'sus'],
   seguimiento_12sem: ['bai', 'swls'],
 }
 

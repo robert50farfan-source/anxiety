@@ -29,6 +29,36 @@ export const SWLS = {
   ],
 }
 
+export const SUS = {
+  id:          'sus',
+  tabla:       'resultados_sus',
+  encabezado:  'Usabilidad de la aplicación',
+  titulo:      'Cuestionario SUS',
+  subtitulo:   '10 afirmaciones sobre tu experiencia con la app',
+  icono:       '📱',
+  instruccion: 'Piensa en tu experiencia usando esta aplicación durante el estudio. Indica en qué medida estás de acuerdo con cada afirmación. No hay respuestas correctas ni incorrectas.',
+  pregunta:    '¿En qué medida estás de acuerdo con cada afirmación?',
+  items: [
+    'Creo que me gustaría usar esta aplicación con frecuencia.',
+    'Encontré la aplicación innecesariamente compleja.',
+    'Pensé que la aplicación era fácil de usar.',
+    'Creo que necesitaría ayuda de una persona con conocimientos técnicos para usar esta aplicación.',
+    'Encontré que las distintas funciones de la aplicación estaban bien integradas.',
+    'Pensé que había demasiada inconsistencia en la aplicación.',
+    'Imagino que la mayoría de las personas aprendería a usar esta aplicación muy rápidamente.',
+    'Encontré la aplicación muy difícil de usar.',
+    'Me sentí muy seguro/a usando la aplicación.',
+    'Necesité aprender muchas cosas antes de poder usar la aplicación.',
+  ],
+  opciones: [
+    { value: 1, label: 'Totalmente en desacuerdo' },
+    { value: 2, label: 'En desacuerdo' },
+    { value: 3, label: 'Ni de acuerdo ni en desacuerdo' },
+    { value: 4, label: 'De acuerdo' },
+    { value: 5, label: 'Totalmente de acuerdo' },
+  ],
+}
+
 // Interpretación (solo panel admin; no se muestra al participante)
 export function interpretarSWLS(score) {
   if (score == null) return null

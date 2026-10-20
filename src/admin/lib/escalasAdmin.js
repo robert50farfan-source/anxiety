@@ -12,7 +12,19 @@ export const ESCALAS_ADMIN = {
     puntajeMax:  35,
     interpretar: interpretarSWLS,
   },
+  sus: {
+    id:          'sus',
+    tabla:       'resultados_sus',
+    nombre:      'SUS',
+    descripcion: 'Escala de Usabilidad del Sistema · 10 ítems (1–5) · rango 0–100 · solo semana 8',
+    tipos:       ['final_8sem', 'voluntaria'],
+    nItems:      10,
+    puntajeMax:  100,
+    interpretar: sinInterpretacion, // la tesis no define categorías de interpretación para la SUS
+  },
 }
+
+function sinInterpretacion() { return null }
 
 export function interpretarBAI(score) {
   if (score == null) return null

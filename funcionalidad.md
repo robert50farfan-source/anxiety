@@ -20,7 +20,7 @@ Plataforma web progresiva (PWA) de salud mental para **estudiantes universitario
 | IA | Anthropic Claude (haiku-4-5) vía Edge Function |
 | Serverless | Supabase Edge Functions (Deno) |
 | Push | Web Push API (VAPID) |
-| Instrumentos | BAI, SWLS |
+| Instrumentos | BAI, SWLS, SUS |
 | Email | Resend API |
 | PWA | Workbox 7 (Service Worker + offline) |
 
@@ -130,11 +130,25 @@ Auto-guardado en cada paso (localStorage + Supabase). Permite retomar, editar y 
 - **El participante no ve su puntaje** (para no influir en las respuestas); solo el panel admin muestra la interpretación:
   31–35 extremadamente satisfecho · 26–30 satisfecho · 21–25 ligeramente satisfecho · 20 neutral · 15–19 ligeramente insatisfecho · 10–14 insatisfecho · 5–9 extremadamente insatisfecho
 
-### 6c. Evaluaciones de seguimiento (semanas 8 y 12)
+### 6c. SUS (Escala de Usabilidad del Sistema)
+
+- 10 ítems en español, escala 1–5 (Totalmente en desacuerdo … Totalmente de acuerdo)
+- Se aplica **una sola vez**, a ambos grupos, en la ventana `final_8sem` (días 53–63), después del BAI y la SWLS
+- Tabla `resultados_sus` con RLS igual que el BAI; trigger `tipificar_sus_automatica`: `final_8sem` en ventana (una por participante), cualquier otra → `voluntaria`
+- Puntaje calculado en BD (columna generada): ítems impares (respuesta − 1), ítems pares (5 − respuesta), suma × 2,5 → 0–100
+- El participante no ve su puntaje
+
+### 6d. Evaluaciones de seguimiento (semanas 8 y 12)
 
 - En ventana, Inicio muestra la tarjeta "Evaluación de N semanas" y el BAI de Progreso abre el flujo completo
-- Flujo único: **BAI → SWLS** (cada cuestionario enlaza con el siguiente)
+- Flujo único: **semana 8: BAI → SWLS → SUS** · **semana 12: BAI → SWLS** (cada cuestionario enlaza con el siguiente)
 - Un solo recordatorio push por ventana para todos los instrumentos
+
+| Instrumento | Semana 0 | Semana 4 | Semana 8 | Semana 12 |
+|---|---|---|---|---|
+| BAI | ✓ | ✓ | ✓ | ✓ |
+| SWLS | ✓ | — | ✓ | ✓ |
+| SUS | — | — | ✓ | — |
 
 ---
 
@@ -167,8 +181,8 @@ Usuario presiona "Crisis" / IA detecta palabras clave
 
 - Dashboard: métricas generales, alertas activas (BAI + episodios)
 - CRUD: participantes, administradores, profesionales de apoyo
-- Visualización: mediciones por instrumento (pestañas BAI / SWLS) con tipo, fecha, puntaje e interpretación; episodios con filtros
-- Ficha del participante con su historial BAI y SWLS
+- Visualización: mediciones por instrumento (pestañas BAI / SWLS / SUS) con tipo, fecha, puntaje e interpretación; episodios con filtros
+- Ficha del participante con su historial BAI, SWLS y SUS
 - **Exportación en formato largo** (CSV con BOM para SPSS, y JSON): una fila por participante × instrumento × medición, con grupo (EXP/CTR), tipo, fecha, días, ventana, total, interpretación e `item_1…item_21`
 - Conversaciones del chat (solo investigador, auditado) con exportación CSV
 - Log de eventos de crisis por participante
@@ -181,7 +195,7 @@ Usuario presiona "Crisis" / IA detecta palabras clave
 | Función | Disparador | Descripción |
 |---------|-----------|-------------|
 | `chat-proxy` | POST desde cliente (JWT, solo grupo experimental) | Llama Anthropic API con contexto TCC; historial leído de BD; límite 60 msgs/día; detección de crisis con respaldo por palabras clave |
-| `notificar-bai` | Cron 9 AM diario (header `x-cron-secret`) | Push por ventana de evaluación pendiente (BAI; BAI + SWLS en semanas 8 y 12); marca `inactivo_sin_basal` al día 7 |
+| `notificar-bai` | Cron 9 AM diario (header `x-cron-secret`) | Push por ventana de evaluación pendiente (BAI en semana 4; BAI + SWLS + SUS en semana 8; BAI + SWLS en semana 12); marca `inactivo_sin_basal` al día 7 |
 | `notificar-crisis` | POST desde cliente (JWT) | Email al investigador al detectar crisis |
 | `tts-proxy` | POST desde cliente (JWT, solo grupo experimental) | Voz ElevenLabs para el chat |
 | `send-daily-reminder` | Cron configurable | Push diario de estado emocional a hora elegida |

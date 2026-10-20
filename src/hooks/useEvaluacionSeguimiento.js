@@ -5,7 +5,7 @@ import { useParticipante } from '../context/ParticipanteContext'
 import { calcularSeguimiento } from '../lib/evaluaciones'
 
 // Instrumentos pendientes en la ventana de seguimiento actual (semanas 8 y 12)
-const TABLAS = { bai: 'resultados_bai', swls: 'resultados_swls' }
+const TABLAS = { bai: 'resultados_bai', swls: 'resultados_swls', sus: 'resultados_sus' }
 
 export function useEvaluacionSeguimiento() {
   const { userId } = useAuth()
