@@ -7,7 +7,6 @@ import BreathingGuide from '../components/BreathingGuide'
 import ProfesionalesApoyo from '../components/ProfesionalesApoyo'
 import {
   loadChatHistory,
-  saveMessage,
   callChatProxy,
   buildContext,
 } from '../lib/chatApi'
@@ -38,6 +37,9 @@ const FALLBACK_ERROR = {
   fecha: null,
   hasCrisis: false,
 }
+
+const RATE_LIMIT_MSG = 'Por hoy alcanzaste el límite de mensajes del chat. Puedes volver mañana; mientras tanto, los ejercicios siguen disponibles.'
+const MAX_LARGO_MENSAJE = 2000
 
 function uid() {
   return `tmp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
@@ -275,29 +277,22 @@ export default function Chat() {
       hasCrisis: false,
     }
 
-    // Capture current conversation for context BEFORE state update
-    const history   = msgs.filter(m => m.id !== 'welcome')
-    const forClaude = [...history, userMsg]
-      .slice(-10)
-      .map(m => ({ role: m.rol === 'user' ? 'user' : 'assistant', content: m.contenido }))
-
     setMsgs(prev => [...prev.filter(m => m.id !== 'welcome'), userMsg])
     setIsTyping(true)
-    saveMessage(userId, 'user', text)
 
     try {
-      const context = await buildContext(userId)
-      const raw     = await callChatProxy(forClaude, context)
+      // chat-proxy toma el historial de la BD y guarda ambos mensajes
+      const raw = await callChatProxy(text, buildContext())
 
       const hasCrisis = raw.includes('[CRISIS_BLOCK]')
       const contenido = raw.replace('[CRISIS_BLOCK]', '').trim()
       const fecha     = new Date().toISOString()
 
       setMsgs(prev => [...prev, { id: uid(), rol: 'assistant', contenido, fecha, hasCrisis }])
-      saveMessage(userId, 'assistant', raw)
       if (voiceEnabledRef.current && !hasCrisis) speakText(contenido)
-    } catch {
-      setMsgs(prev => [...prev, { ...FALLBACK_ERROR, id: uid(), fecha: new Date().toISOString() }])
+    } catch (err) {
+      const contenido = err?.message === 'rate-limited' ? RATE_LIMIT_MSG : FALLBACK_ERROR.contenido
+      setMsgs(prev => [...prev, { ...FALLBACK_ERROR, contenido, id: uid(), fecha: new Date().toISOString() }])
     } finally {
       setIsTyping(false)
     }
@@ -440,6 +435,7 @@ export default function Chat() {
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKey}
+              maxLength={MAX_LARGO_MENSAJE}
               placeholder={listening ? 'Escuchando…' : 'Escribe cómo te sientes...'}
               rows={1}
               disabled={isTyping}

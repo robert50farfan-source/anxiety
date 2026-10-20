@@ -29,7 +29,10 @@ const TIPO_LABEL = {
   contacto_profesional_apoyo: { label: 'Contactó profesional',     icono: '🏥' },
   contacto_personal:          { label: 'Contactó persona personal', icono: '👤' },
   contacto_linea_nacional:    { label: 'Llamó línea nacional',      icono: '📞' },
+  deteccion_chat:             { label: 'Crisis detectada en chat',  icono: '💬' },
 }
+
+const ORIGEN_LABEL = { modelo: 'por el asistente', palabras_clave: 'por palabras clave' }
 
 const TIPOS_FILTRO = [
   { value: '', label: 'Todos los tipos' },
@@ -37,6 +40,7 @@ const TIPOS_FILTRO = [
   { value: 'contacto_profesional_apoyo', label: 'Contacto a profesional' },
   { value: 'contacto_personal',          label: 'Contacto personal' },
   { value: 'contacto_linea_nacional',    label: 'Línea nacional' },
+  { value: 'deteccion_chat',             label: 'Detección en chat' },
 ]
 
 // ── Componente ────────────────────────────────────────────────────────
@@ -231,6 +235,9 @@ export default function CrisisEventos() {
                       <td className="px-4 py-3 text-base">{meta.icono}</td>
                       <td className="px-4 py-3">
                         <p className="font-medium text-slate-700">{meta.label}</p>
+                        {ev.detalles?.origen && (
+                          <p className="text-xs text-slate-400">{ORIGEN_LABEL[ev.detalles.origen] ?? ev.detalles.origen}</p>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <span className="font-mono text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">

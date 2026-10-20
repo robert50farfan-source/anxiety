@@ -8,6 +8,7 @@ const NAV = [
   { to: '/admin/mediciones',     label: 'Mediciones',          icono: '📋', activo: true  },
   { to: '/admin/episodios',      label: 'Episodios',           icono: '📅', activo: true  },
   { to: '/admin/crisis',         label: 'Eventos de crisis',   icono: '🚨', activo: true  },
+  { to: '/admin/conversaciones', label: 'Conversaciones',      icono: '💬', activo: true, soloInvestigador: true },
 ]
 
 const CONFIG = [
@@ -56,7 +57,7 @@ export default function AdminSidebar({ open, onClose }) {
 
       {/* Nav principal */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {NAV.map(item =>
+        {NAV.filter(item => !item.soloInvestigador || esInvestigador).map(item =>
           item.activo ? (
             <NavLink
               key={item.to}

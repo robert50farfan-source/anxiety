@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom'
 
 import { AuthProvider, useAuth } from './context/AuthContext'
@@ -18,16 +18,26 @@ import AdminBanner from './admin/components/AdminBanner'
 import RequiereAdmin from './admin/components/RequiereAdmin'
 import AdminLayout from './admin/components/AdminLayout'
 
-import AdminLogin from './admin/pages/AdminLogin'
-import Dashboard from './admin/pages/Dashboard'
-import Participantes from './admin/pages/Participantes'
-import Profesionales from './admin/pages/Profesionales'
-import Mediciones from './admin/pages/Mediciones'
-import Episodios from './admin/pages/Episodios'
-import CrisisEventos from './admin/pages/CrisisEventos'
-import Configuracion from './admin/pages/configuracion/Configuracion'
-import Administradores from './admin/pages/configuracion/Administradores'
-import Auditoria from './admin/pages/configuracion/Auditoria'
+// Páginas admin bajo demanda: los participantes no descargan este código
+const AdminLogin      = lazy(() => import('./admin/pages/AdminLogin'))
+const Dashboard       = lazy(() => import('./admin/pages/Dashboard'))
+const Participantes   = lazy(() => import('./admin/pages/Participantes'))
+const Profesionales   = lazy(() => import('./admin/pages/Profesionales'))
+const Mediciones      = lazy(() => import('./admin/pages/Mediciones'))
+const Episodios       = lazy(() => import('./admin/pages/Episodios'))
+const CrisisEventos   = lazy(() => import('./admin/pages/CrisisEventos'))
+const Conversaciones  = lazy(() => import('./admin/pages/Conversaciones'))
+const Configuracion   = lazy(() => import('./admin/pages/configuracion/Configuracion'))
+const Administradores = lazy(() => import('./admin/pages/configuracion/Administradores'))
+const Auditoria       = lazy(() => import('./admin/pages/configuracion/Auditoria'))
+
+function AdminCargando() {
+  return (
+    <div className="flex items-center justify-center py-24">
+      <div className="w-8 h-8 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+    </div>
+  )
+}
 
 function PantallaRetirado() {
   const { motivoRetiro } = useParticipante()
@@ -124,7 +134,9 @@ function ParticipantApp() {
 function AdminRoot() {
   return (
     <AdminSessionProvider>
-      <Outlet />
+      <Suspense fallback={<AdminCargando />}>
+        <Outlet />
+      </Suspense>
     </AdminSessionProvider>
   )
 }
@@ -144,6 +156,7 @@ export default function App() {
               <Route path="mediciones"    element={<Mediciones />} />
               <Route path="episodios"     element={<Episodios />} />
               <Route path="crisis"        element={<CrisisEventos />} />
+              <Route path="conversaciones" element={<Conversaciones />} />
               <Route path="configuracion" element={<Configuracion />}>
                 <Route index element={<Navigate to="administradores" replace />} />
                 <Route path="administradores" element={<Administradores />} />
