@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useParticipantesAdmin } from '../hooks/useParticipantesAdmin'
 import { useAdminSession } from '../hooks/useAdminSession'
 import { supabaseAdmin } from '../lib/supabaseAdmin'
+import { ESCALAS_ADMIN } from '../lib/escalasAdmin'
 
 const ESTADO_BADGE = {
   codigo_generado:       'bg-slate-100 text-slate-600',
@@ -143,6 +144,7 @@ function DrawerParticipante({ p, onClose, onActualizarNotas, onRetirar, onResete
 
   const [consent, setConsent] = useState(null)
   const [bais, setBais] = useState([])
+  const [escalas, setEscalas] = useState({}) // { swls: [...], ... }
 
   useEffect(() => {
     supabaseAdmin
@@ -161,6 +163,15 @@ function DrawerParticipante({ p, onClose, onActualizarNotas, onRetirar, onResete
       .eq('participante_id', p.id)
       .order('fecha', { ascending: false })
       .then(({ data }) => setBais(data ?? []))
+
+    Promise.all(Object.values(ESCALAS_ADMIN).map(e =>
+      supabaseAdmin
+        .from(e.tabla)
+        .select('id, fecha, puntaje_total, tipo_medicion, ventana_esperada')
+        .eq('participante_id', p.id)
+        .order('fecha', { ascending: false })
+        .then(({ data }) => [e.id, data ?? []])
+    )).then(entradas => setEscalas(Object.fromEntries(entradas)))
   }, [p.id])
 
   function descargarTxt() {
@@ -353,6 +364,31 @@ function DrawerParticipante({ p, onClose, onActualizarNotas, onRetirar, onResete
               </>
             )}
           </section>
+
+          {/* Secciones: escalas complementarias (SWLS, SUS) */}
+          {Object.values(ESCALAS_ADMIN).map(e => {
+            const filas = escalas[e.id] ?? []
+            return (
+              <section key={e.id}>
+                <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">{e.nombre}</h3>
+                {filas.length === 0 ? (
+                  <p className="text-xs text-slate-400">Sin mediciones {e.nombre}</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {filas.map(m => (
+                      <div key={m.id} className="flex items-center justify-between gap-2 text-xs py-1.5 border-b border-slate-50">
+                        <span className="text-slate-500">{new Date(m.fecha).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}</span>
+                        <span className="text-slate-600">{{ basal:'Basal', final_8sem:'8 sem', seguimiento_12sem:'12 sem', voluntaria:'Voluntaria' }[m.tipo_medicion] ?? m.tipo_medicion ?? '—'}</span>
+                        <span className="font-bold text-slate-800">{Number(m.puntaje_total)}</span>
+                        <span className="text-slate-500 truncate max-w-[9rem]">{e.interpretar(Number(m.puntaje_total)) ?? ''}</span>
+                        <span className="text-slate-400">{m.ventana_esperada ? '✓ ventana' : ''}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )
+          })}
 
           {/* Sección: Episodios (próxima versión) */}
           <section>

@@ -1,6 +1,10 @@
 import { useState, useMemo } from 'react'
 import { useMedicionesAdmin } from '../hooks/useMedicionesAdmin'
 import { useAdminSession } from '../hooks/useAdminSession'
+import { useAuditoria } from '../hooks/useAuditoria'
+import TablaEscala from '../components/TablaEscala'
+import { ESCALAS_ADMIN } from '../lib/escalasAdmin'
+import { obtenerMedicionesLargo, descargarCSVLargo, descargarJSONLargo } from '../lib/exportarMediciones'
 
 const TIPO_LABEL = {
   basal: 'Basal',
@@ -84,7 +88,69 @@ function GraficaComparativa({ graficaData }) {
   )
 }
 
+// ── Página: pestañas por instrumento + exportación en formato largo ─────────
+const PESTANAS = [
+  { id: 'bai', label: 'BAI' },
+  ...Object.values(ESCALAS_ADMIN).map(e => ({ id: e.id, label: e.nombre })),
+]
+
 export default function Mediciones() {
+  const [pestana, setPestana] = useState('bai')
+  const [exportando, setExportando] = useState(null)
+  const [errorExport, setErrorExport] = useState(null)
+  const { registrar } = useAuditoria()
+
+  const exportar = async (formato) => {
+    setExportando(formato); setErrorExport(null)
+    try {
+      const filas = await obtenerMedicionesLargo()
+      if (formato === 'csv') descargarCSVLargo(filas)
+      else descargarJSONLargo(filas)
+      registrar('exportar_mediciones_largo', 'mediciones', null, { formato, filas: filas.length })
+    } catch (err) {
+      setErrorExport(err.message ?? 'No se pudo exportar')
+    }
+    setExportando(null)
+  }
+
+  return (
+    <div className="space-y-5 max-w-6xl">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex gap-1 border-b border-slate-200">
+          {PESTANAS.map(p => (
+            <button key={p.id} onClick={() => setPestana(p.id)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                pestana === p.id
+                  ? 'border-indigo-600 text-indigo-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-700'
+              }`}>
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-slate-400">Formato largo (todos los instrumentos):</span>
+          {['csv', 'json'].map(f => (
+            <button key={f} onClick={() => exportar(f)} disabled={!!exportando}
+              className="text-sm px-3 py-2 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 disabled:opacity-40 transition">
+              {exportando === f ? 'Exportando…' : `Exportar ${f.toUpperCase()}`}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {errorExport && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{errorExport}</div>
+      )}
+
+      {pestana === 'bai'
+        ? <MedicionesBAI />
+        : <TablaEscala key={pestana} escala={ESCALAS_ADMIN[pestana]} />}
+    </div>
+  )
+}
+
+function MedicionesBAI() {
   const { mediciones, cargando, error, cargar, resumen, graficaData, alertas, exportarCSVWide, clasificacion } = useMedicionesAdmin()
   const { esInvestigador } = useAdminSession()
 
@@ -107,7 +173,7 @@ export default function Mediciones() {
   const hayAlertas = alertas && Object.values(alertas).some(a => a.length > 0)
 
   return (
-    <div className="space-y-5 max-w-6xl">
+    <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>

@@ -4,6 +4,7 @@ import GroundingGuide from '../components/GroundingGuide'
 import MuscleGuide from '../components/MuscleGuide'
 import MindfulnessGuide from '../components/MindfulnessGuide'
 import EpisodioWizard from '../components/EpisodioWizard'
+import EvaluacionPendienteCard from '../components/EvaluacionPendienteCard'
 import { useStats } from '../hooks/useStats'
 import { useEmergencyContact, contactUrl } from '../hooks/useEmergencyContact'
 import { useEpisodios } from '../hooks/useEpisodios'
@@ -130,6 +131,9 @@ export default function Home() {
           <p className="text-calm-600 text-sm font-medium">Buenos días</p>
           <h1 className="text-2xl font-bold text-gray-800 mt-0.5">¿Cómo te sientes hoy?</h1>
         </div>
+
+        {/* Evaluación de seguimiento (semanas 8 y 12) — solo si hay pendientes */}
+        <EvaluacionPendienteCard />
 
         {/* Mood selector */}
         <div className="card space-y-4">

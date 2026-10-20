@@ -3,13 +3,44 @@ import webpush from 'npm:web-push'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
+
+// Instrumentos de cada ventana de seguimiento (un solo aviso por ventana)
+const INSTRUMENTOS: Record<string, string[]> = {
+  intermedia_4sem:   ['resultados_bai'],
+  final_8sem:        ['resultados_bai', 'resultados_swls'],
+  seguimiento_12sem: ['resultados_bai', 'resultados_swls'],
+}
+
+// Tablas en las que aún falta la medición `tipo` del participante
+// deno-lint-ignore no-explicit-any
+async function tablasPendientes(supabase: any, participanteId: string, tipo: string): Promise<string[]> {
+  const pendientes: string[] = []
+  for (const tabla of INSTRUMENTOS[tipo] ?? []) {
+    const { count } = await supabase
+      .from(tabla)
+      .select('id', { count: 'exact', head: true })
+      .eq('participante_id', participanteId)
+      .eq('tipo_medicion', tipo)
+    if ((count ?? 0) === 0) pendientes.push(tabla)
+  }
+  return pendientes
+}
+
+const esConjunta = (tipo: string) => (INSTRUMENTOS[tipo]?.length ?? 0) > 1
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
+  }
+
+  // Solo el cron puede ejecutarla: usa service role, envía pushes/emails y cambia estados
+  const cronSecret = Deno.env.get('CRON_SECRET')
+  if (!cronSecret || req.headers.get('x-cron-secret') !== cronSecret) {
+    return new Response(JSON.stringify({ error: 'No autorizado' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   }
 
   try {
@@ -76,38 +107,41 @@ Deno.serve(async (req: Request) => {
           marcarInactivo = true
         }
       } else if (diasDesdeInicio === 22 || diasDesdeInicio === 50 || diasDesdeInicio === 78) {
+        const tipoMap: Record<number, string> = { 22: 'intermedia_4sem', 50: 'final_8sem', 78: 'seguimiento_12sem' }
         notif = {
           title: 'AnxietyApp',
-          body: 'Pronto será momento de tu siguiente cuestionario BAI. Prepárate para completarlo esta semana.',
+          body: esConjunta(tipoMap[diasDesdeInicio])
+            ? 'Pronto será momento de tu evaluación de seguimiento (2 cuestionarios breves). Prepárate para completarla esta semana.'
+            : 'Pronto será momento de tu siguiente cuestionario BAI. Prepárate para completarlo esta semana.',
           url: '/',
         }
       } else if (diasDesdeInicio === 25 || diasDesdeInicio === 53 || diasDesdeInicio === 81) {
         const tipoMap: Record<number, string> = { 25: 'intermedia_4sem', 53: 'final_8sem', 81: 'seguimiento_12sem' }
         const tipo = tipoMap[diasDesdeInicio]
-        const { count } = await supabase
-          .from('resultados_bai')
-          .select('id', { count: 'exact', head: true })
-          .eq('participante_id', p.id)
-          .eq('tipo_medicion', tipo)
-        if ((count ?? 0) === 0) {
-          notif = {
-            title: 'AnxietyApp — BAI de seguimiento',
-            body: 'Hoy puedes completar tu cuestionario BAI de seguimiento. Solo toma 10 minutos.',
-            url: '/',
-          }
+        const pendientes = await tablasPendientes(supabase, p.id, tipo)
+        if (pendientes.length > 0) {
+          notif = esConjunta(tipo)
+            ? {
+                title: 'AnxietyApp — Evaluación de seguimiento',
+                body: 'Hoy puedes completar tu evaluación de seguimiento. Son cuestionarios breves, unos 12 minutos en total.',
+                url: '/',
+              }
+            : {
+                title: 'AnxietyApp — BAI de seguimiento',
+                body: 'Hoy puedes completar tu cuestionario BAI de seguimiento. Solo toma 10 minutos.',
+                url: '/',
+              }
         }
       } else if (diasDesdeInicio === 36 || diasDesdeInicio === 64 || diasDesdeInicio === 92) {
         const tipoMap: Record<number, string> = { 36: 'intermedia_4sem', 64: 'final_8sem', 92: 'seguimiento_12sem' }
         const tipo = tipoMap[diasDesdeInicio]
-        const { count } = await supabase
-          .from('resultados_bai')
-          .select('id', { count: 'exact', head: true })
-          .eq('participante_id', p.id)
-          .eq('tipo_medicion', tipo)
-        if ((count ?? 0) === 0) {
+        const pendientes = await tablasPendientes(supabase, p.id, tipo)
+        if (pendientes.length > 0) {
           notif = {
             title: 'AnxietyApp',
-            body: 'Aún puedes completar el cuestionario BAI pendiente. Por favor hazlo hoy.',
+            body: esConjunta(tipo)
+              ? 'Aún puedes completar tu evaluación de seguimiento pendiente. Por favor hazla hoy.'
+              : 'Aún puedes completar el cuestionario BAI pendiente. Por favor hazlo hoy.',
             url: '/',
           }
         }
@@ -173,4 +207,5 @@ Deno.serve(async (req: Request) => {
 // Método: POST
 // Cuerpo: {}
 // Schedule: 0 9 * * * (diariamente a las 9:00 AM Bolivia = 13:00 UTC)
-// En cron-job.org: agregar header Authorization: Bearer [ANON_KEY] (opcional)
+// En cron-job.org: header Authorization: Bearer [ANON_KEY]
+//                  header x-cron-secret: [CRON_SECRET]   ← obligatorio (supabase secrets set CRON_SECRET=...)

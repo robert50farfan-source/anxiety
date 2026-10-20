@@ -5,7 +5,9 @@ import { useEmergencyContact } from '../hooks/useEmergencyContact'
 import BAI from './BAI'
 import MisEpisodios from '../components/MisEpisodios'
 import EpisodioWizard from '../components/EpisodioWizard'
+import EvaluacionFlujo from '../components/EvaluacionFlujo'
 import { useParticipante } from '../context/ParticipanteContext'
+import { useEvaluacionSeguimiento } from '../hooks/useEvaluacionSeguimiento'
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -302,6 +304,9 @@ export default function Progress() {
   const [wizardInitialData, setWizardInitialData] = useState(null)
   const [wizardInitialPaso, setWizardInitialPaso] = useState(1)
   const { esExperimental } = useParticipante() ?? {}
+  // En ventana de seguimiento (sem 8/12) el BAI abre el flujo completo BAI → SWLS
+  const seguimiento = useEvaluacionSeguimiento()
+  const flujoSeguimiento = seguimiento.pendientes.includes('bai') ? seguimiento.pendientes : null
 
   if (loading) return <LoadingSkeleton />
 
@@ -485,7 +490,10 @@ export default function Progress() {
       </div>
 
     </div>
-    {showBAI && <BAI onClose={() => setShowBAI(false)} />}
+    {showBAI && (flujoSeguimiento
+      ? <EvaluacionFlujo pasos={flujoSeguimiento} onTerminar={() => { setShowBAI(false); seguimiento.recargar() }} />
+      : <BAI onClose={() => { setShowBAI(false); seguimiento.recargar() }} />
+    )}
     {showEpisodioWizard && (
       <EpisodioWizard
         onClose={() => { setShowEpisodioWizard(false); setWizardInitialData(null); setWizardInitialPaso(1) }}

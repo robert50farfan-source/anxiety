@@ -12,6 +12,7 @@ import CodigoParticipanteGate from './components/CodigoParticipanteGate'
 import ParticipanteBadge from './components/ParticipanteBadge'
 import PantallaConsentimiento from './components/PantallaConsentimiento'
 import BasalBloqueada from './components/BasalBloqueada'
+import SWLSPendienteAviso from './components/SWLSPendienteAviso'
 
 import { AdminSessionProvider } from './admin/hooks/useAdminSession'
 import AdminBanner from './admin/components/AdminBanner'
@@ -117,6 +118,7 @@ function ParticipantShell() {
         </main>
         <BottomNav current={page} onChange={setPage} />
       </div>
+      <SWLSPendienteAviso />
     </>
   )
 }

@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, useCallback } from 'rea
 import { supabase } from '../lib/supabase'
 import { useAuth } from './AuthContext'
 import { VERSION_CONSENTIMIENTO_VIGENTE } from '../config/consentimiento'
+import { calcularEvaluacionInicial } from '../lib/evaluaciones'
 
 const ParticipanteCtx = createContext(null)
 export const useParticipante = () => useContext(ParticipanteCtx)
@@ -13,6 +14,8 @@ export function ParticipanteProvider({ children }) {
   const [consentimientoVigente, setConsentimientoVigente] = useState(null)
   const [basalRequerida, setBasalRequerida] = useState(false)
   const [estaInactivoSinBasal, setEstaInactivoSinBasal] = useState(false)
+  const [pendientesBasal, setPendientesBasal] = useState([])   // ['bai', 'swls'] en orden
+  const [swlsBasalTardia, setSwlsBasalTardia] = useState(false) // cuenta antigua sin SWLS basal
 
   const fetchParticipante = useCallback(async () => {
     if (!supabase || !userId) { setCargando(false); return }
@@ -35,21 +38,32 @@ export function ParticipanteProvider({ children }) {
     }
     setConsentimientoVigente(consentData)
 
-    // Verificar si basal está pendiente (día 3+, sin ningún BAI)
-    let basalReq = false
+    // Evaluación inicial (BAI + SWLS): bloquea desde que se firma el consentimiento
+    let evaluacion = { bloquea: false, pendientes: [], swlsTardia: false }
     const esInactivo = (row?.estado === 'inactivo_sin_basal')
 
     if ((row?.estado === 'activo' || row?.estado === 'consentimiento_firmado') && row?.fecha_inicio_estudio) {
-      const dias = Math.max(0, Math.floor((Date.now() - new Date(row.fecha_inicio_estudio).getTime()) / 86400000))
-      if (dias >= 3) {
-        const { count } = await supabase
+      const [{ count: totalBAI }, { count: swlsBasal }] = await Promise.all([
+        supabase
           .from('resultados_bai')
           .select('id', { count: 'exact', head: true })
+          .eq('user_id', userId),
+        supabase
+          .from('resultados_swls')
+          .select('id', { count: 'exact', head: true })
           .eq('user_id', userId)
-        basalReq = (count ?? 0) === 0
-      }
+          .eq('tipo_medicion', 'basal'),
+      ])
+      evaluacion = calcularEvaluacionInicial({
+        estado: row.estado,
+        fechaInicio: row.fecha_inicio_estudio,
+        totalBAI,
+        tieneSWLSBasal: (swlsBasal ?? 0) > 0,
+      })
     }
-    setBasalRequerida(basalReq)
+    setBasalRequerida(evaluacion.bloquea)
+    setPendientesBasal(evaluacion.pendientes)
+    setSwlsBasalTardia(evaluacion.swlsTardia)
     setEstaInactivoSinBasal(esInactivo)
 
     setCargando(false)
@@ -79,6 +93,8 @@ export function ParticipanteProvider({ children }) {
     tieneConsentimientoVigente: !!consentimientoVigente,
     consentimientoFecha: consentimientoVigente?.fecha_aceptacion ?? null,
     basalRequerida,
+    pendientesBasal,
+    swlsBasalTardia,
     estaInactivoSinBasal,
     recargar: fetchParticipante,
   }

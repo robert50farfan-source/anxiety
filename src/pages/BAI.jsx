@@ -114,7 +114,9 @@ const bannerColors = {
   neutro:'bg-gray-50 border border-gray-200 text-gray-600',
 }
 
-export default function BAI({ onClose }) {
+// onContinuar: si se pasa, el BAI forma parte de un flujo de evaluación (BAI → SWLS…)
+// y el botón final avanza al siguiente cuestionario en lugar de cerrar.
+export default function BAI({ onClose, onContinuar, continuarLabel }) {
   const { userId } = useAuth()
   const { bannerContext, proximaMedicion, TIPO_LABEL, cargar: recargarBAI } = useBAIContext()
 
@@ -390,14 +392,24 @@ export default function BAI({ onClose }) {
           </div>
 
           <div className="px-5 pb-safe pb-8 pt-3 shrink-0 space-y-3 border-t border-calm-100 bg-calm-50">
-            <button onClick={restart} className="w-full py-3.5 rounded-2xl bg-white border border-calm-200
-                                                  text-gray-700 font-medium text-sm active:scale-95 transition-transform">
-              Repetir cuestionario
-            </button>
-            <button onClick={onClose} className="w-full py-4 rounded-2xl bg-calm-500 text-white font-semibold
-                                                  active:scale-95 transition-transform">
-              Volver a Progreso
-            </button>
+            {onContinuar ? (
+              <button onClick={onContinuar} disabled={saving}
+                      className="w-full py-4 rounded-2xl bg-calm-500 text-white font-semibold
+                                 disabled:opacity-60 active:scale-95 transition-transform">
+                {saving ? 'Guardando…' : (continuarLabel ?? 'Continuar')}
+              </button>
+            ) : (
+              <>
+                <button onClick={restart} className="w-full py-3.5 rounded-2xl bg-white border border-calm-200
+                                                      text-gray-700 font-medium text-sm active:scale-95 transition-transform">
+                  Repetir cuestionario
+                </button>
+                <button onClick={onClose} className="w-full py-4 rounded-2xl bg-calm-500 text-white font-semibold
+                                                      active:scale-95 transition-transform">
+                  Volver a Progreso
+                </button>
+              </>
+            )}
           </div>
         </>
       )}
