@@ -5,9 +5,9 @@ import MuscleGuide from '../components/MuscleGuide'
 import MindfulnessGuide from '../components/MindfulnessGuide'
 import EpisodioWizard from '../components/EpisodioWizard'
 import EvaluacionPendienteCard from '../components/EvaluacionPendienteCard'
+import SugerenciaEpisodio, { tocaSugerirEpisodio } from '../components/SugerenciaEpisodio'
 import { useStats } from '../hooks/useStats'
 import { useEmergencyContact, contactUrl } from '../hooks/useEmergencyContact'
-import { useEpisodios } from '../hooks/useEpisodios'
 import { useParticipante } from '../context/ParticipanteContext'
 
 const MOODS = [
@@ -66,45 +66,14 @@ export default function Home() {
   const [noteSaved, setNoteSaved]         = useState(false)
   const [showEpisodioWizard, setShowEpisodioWizard] = useState(false)
   const [wizardPrefilledEstrategia, setWizardPrefilledEstrategia] = useState(null)
-  const [showPromptEpisodio, setShowPromptEpisodio] = useState(false)
-  const [promptEstrategia, setPromptEstrategia] = useState(null)
+  const [sugerencia, setSugerencia] = useState(null) // estrategia del ejercicio recién hecho
 
   const { todayExercises, streak, logMood } = useStats()
   const { contact } = useEmergencyContact()
-  const { guardarEpisodio } = useEpisodios()
   const { esExperimental } = useParticipante() ?? {}
 
   const maybeShowPostExercisePrompt = (estrategia) => {
-    const key = 'episodio_prompt_date'
-    const hoy = new Date().toDateString()
-    if (localStorage.getItem(key) === hoy) return
-    localStorage.setItem(key, hoy)
-    setPromptEstrategia(estrategia)
-    setShowPromptEpisodio(true)
-  }
-
-  const guardarBorradorRapido = async (estrategia) => {
-    const ahora = new Date()
-    const fechaInicio = new Date(ahora - 30 * 60000).toISOString()
-    await guardarEpisodio({
-      id: crypto.randomUUID(),
-      tipo_evento: 'ansiedad',
-      fecha_inicio: fechaInicio,
-      intensidad_numerica: 5,
-      intensidad: 'moderada',
-      duracion_minutos: null,
-      en_curso: false,
-      contexto: 'no_especifica',
-      contexto_otro: '',
-      desencadenante: null,
-      sintomas_fisicos: [],
-      sintomas_emocionales: [],
-      estrategias_aplicadas: estrategia ? [estrategia] : [],
-      efectividad_estrategia: null,
-      notas: null,
-      completado: false,
-      paso_actual: 1,
-    })
+    if (tocaSugerirEpisodio()) setSugerencia(estrategia)
   }
 
   const handleMoodSelect = (mood) => {
@@ -326,33 +295,9 @@ export default function Home() {
         />
       )}
 
-      {showPromptEpisodio && esExperimental && (
-        <div className="fixed inset-0 z-50 flex items-end">
-          <div className="fixed inset-0 bg-black/40" onClick={() => setShowPromptEpisodio(false)} />
-          <div className="relative w-full max-w-md mx-auto bg-white rounded-t-3xl px-5 pt-5 pb-8 shadow-2xl">
-            <p className="font-semibold text-gray-800 mb-1">¿Acabas de atravesar un episodio?</p>
-            <p className="text-sm text-gray-500 mb-4">Registrarlo te ayuda a entender tus patrones de ansiedad.</p>
-            <div className="space-y-2">
-              <button onClick={() => {
-                setShowPromptEpisodio(false)
-                setWizardPrefilledEstrategia(promptEstrategia)
-                setShowEpisodioWizard(true)
-              }} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-semibold text-sm">
-                Sí, registrarlo
-              </button>
-              <button onClick={() => {
-                setShowPromptEpisodio(false)
-                guardarBorradorRapido(promptEstrategia)
-              }} className="w-full py-2.5 bg-gray-100 text-gray-600 rounded-xl text-sm">
-                Más tarde
-              </button>
-              <button onClick={() => setShowPromptEpisodio(false)}
-                className="w-full py-2 text-gray-400 text-sm">
-                No, gracias
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Sugerencia tras ejercicio — igual para ambos grupos */}
+      {sugerencia && (
+        <SugerenciaEpisodio estrategia={sugerencia} onCerrar={() => setSugerencia(null)} />
       )}
     </>
   )

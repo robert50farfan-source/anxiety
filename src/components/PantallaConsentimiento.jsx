@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import ConsentimientoV1_0, { TEXTO_PLANO_V1_0 } from '../content/consentimiento/v1_0'
+import { CONSENTIMIENTOS } from '../content/consentimiento'
 import { VERSION_CONSENTIMIENTO_VIGENTE } from '../config/consentimiento'
+
+const { Componente: DocumentoVigente, texto: TEXTO_VIGENTE } = CONSENTIMIENTOS[VERSION_CONSENTIMIENTO_VIGENTE]
 import { useParticipante } from '../context/ParticipanteContext'
 import { supabase } from '../lib/supabase'
 
@@ -82,7 +84,7 @@ export default function PantallaConsentimiento() {
     const { error: rpcError } = await supabase.rpc('registrar_consentimiento', {
       p_version:    VERSION_CONSENTIMIENTO_VIGENTE,
       p_user_agent: navigator.userAgent,
-      p_texto:      TEXTO_PLANO_V1_0,
+      p_texto:      TEXTO_VIGENTE,
     })
     if (rpcError) {
       setError('No se pudo registrar el consentimiento. Intenta de nuevo.')
@@ -118,7 +120,7 @@ export default function PantallaConsentimiento() {
         onScroll={handleScroll}
         className="flex-1 overflow-y-auto"
       >
-        <ConsentimientoV1_0 />
+        <DocumentoVigente />
       </div>
 
       {/* Barra inferior fija */}

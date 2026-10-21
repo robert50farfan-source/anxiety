@@ -1,5 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAdminSession } from '../hooks/useAdminSession'
+import { CONSENTIMIENTO_PERMITE_LEER_CHAT } from '../../config/consentimiento'
 
 const NAV = [
   { to: '/admin/dashboard',      label: 'Dashboard',          icono: '📊', activo: true  },
@@ -8,7 +9,7 @@ const NAV = [
   { to: '/admin/mediciones',     label: 'Mediciones',          icono: '📋', activo: true  },
   { to: '/admin/episodios',      label: 'Episodios',           icono: '📅', activo: true  },
   { to: '/admin/crisis',         label: 'Eventos de crisis',   icono: '🚨', activo: true  },
-  { to: '/admin/conversaciones', label: 'Conversaciones',      icono: '💬', activo: true, soloInvestigador: true },
+  { to: '/admin/conversaciones', label: 'Conversaciones',      icono: '💬', activo: true, soloInvestigador: true, requiereLecturaChat: true },
 ]
 
 const CONFIG = [
@@ -57,7 +58,7 @@ export default function AdminSidebar({ open, onClose }) {
 
       {/* Nav principal */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {NAV.filter(item => !item.soloInvestigador || esInvestigador).map(item =>
+        {NAV.filter(item => (!item.soloInvestigador || esInvestigador) && (!item.requiereLecturaChat || CONSENTIMIENTO_PERMITE_LEER_CHAT)).map(item =>
           item.activo ? (
             <NavLink
               key={item.to}

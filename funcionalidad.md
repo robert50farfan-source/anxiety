@@ -6,12 +6,13 @@ Plataforma web progresiva (PWA) de salud mental para **estudiantes universitario
 
 **Contexto de investigación:** Ensayo aleatorizado controlado de 12 semanas con:
 - **Grupo experimental:** acceso a chat IA con TCC (texto y voz) + todas las funciones
-- **Grupo control:** las mismas funciones (ejercicios, registro de episodios, BAI/SWLS/SUS, gestión de crisis) **sin el chat IA**
+- **Grupo control (control activo):** las mismas funciones (ejercicios, registro de episodios, BAI/SWLS/SUS, gestión de crisis) **sin el chat IA**
 
-Diferencias entre grupos implementadas en la app:
+**La única diferencia entre grupos es el acceso al chat IA (texto y voz).** En la app se traduce en:
 - Pestaña de chat bloqueada para el grupo control (y rechazada también en el servidor)
-- Opciones de estrategias distintas en el registro de episodios (ver sección 4)
-- Tras un ejercicio, solo al grupo experimental se le sugiere registrar un episodio (máx. una vez al día)
+- En el registro de episodios, la opción «Chat con IA» solo aparece al grupo experimental (el resto de la lista es idéntica, ver sección 4)
+
+Todo lo demás es igual para ambos grupos, incluida la sugerencia de registrar un episodio tras un ejercicio.
 
 ---
 
@@ -82,11 +83,18 @@ Todos los ejercicios registran duración, mood asociado y actualización de rach
 4. Síntomas físicos (9 opciones + otro) y emocionales (6 opciones + otro), selección múltiple
 5. Estrategias aplicadas + efectividad (1-5: nada … mucho) y notas
 
-> Las opciones de estrategias difieren entre grupos:
-> - **Experimental:** técnicas de la app (respiración 4-7-8, grounding, relajación muscular, mindfulness, visualización), chat IA, contacto profesional, contacto personal, otra, nada
-> - **Control:** respirar por su cuenta, distraerse, hablar con alguien, esperar, buscar información, contacto profesional, contacto personal, otra, nada
+**Lista única de estrategias para ambos grupos:**
+
+| Grupo de opciones | Opciones |
+|---|---|
+| Técnicas de la app | Respiración 4-7-8 · Grounding 5-4-3-2-1 · Relajación muscular · Mindfulness · Visualización · **Chat con IA (solo grupo experimental)** |
+| Estrategias propias | Respiré por mi cuenta · Me distraje · Hablé con alguien · Esperé a que pasara · Busqué información |
+| Apoyo | Contacto profesional · Contacto personal |
+| Otras | Otra (texto libre) · Nada |
 
 Auto-guardado en cada paso (localStorage + Supabase). Permite retomar, editar y borrar.
+
+**Sugerencia tras un ejercicio:** al terminar un ejercicio (desde Inicio o desde la pestaña Ejercicios) la app pregunta «¿Acabas de atravesar un episodio?» con la estrategia ya marcada. Igual para ambos grupos y como máximo una vez al día. No aparece tras la respiración del botón «Estoy en crisis» de Inicio.
 
 ---
 
@@ -97,7 +105,7 @@ Auto-guardado en cada paso (localStorage + Supabase). Permite retomar, editar y 
 - **Historial:** el servidor lee los últimos 10 mensajes de la BD y guarda cada intercambio (el cliente no puede alterar la conversación)
 - **Contexto insertado dinámicamente** (armado en el servidor): estado emocional del día y nota, racha, ejercicios de la última semana y técnica más usada, y episodios de ansiedad registrados en la última semana (tipo, intensidad, contexto, desencadenante, efectividad)
 - Estilo: validación emocional antes de intervención, preguntas socráticas, reformulación equilibrada
-- **Detección de crisis:** el modelo añade el marcador `[CRISIS_BLOCK]`; si no lo hace pero el mensaje contiene frases de riesgo, el servidor lo añade igualmente (respaldo por palabras clave) → UI muestra `CrisisCard` con recursos de emergencia; cada detección se registra como evento de crisis
+- **Detección de crisis:** el modelo añade el marcador `[CRISIS_BLOCK]`; si no lo hace pero el mensaje contiene frases de riesgo, el servidor lo añade igualmente (respaldo por palabras clave) → UI muestra `CrisisCard` con recursos de emergencia; cada detección se registra como evento de crisis y se notifica por email al investigador (máx. 1 cada 30 min por participante; ver sección 8)
 - **Modo voz:** dictado por micrófono (reconocimiento de voz del navegador) y lectura en voz alta de las respuestas (ElevenLabs, con la voz del navegador como respaldo)
 - Límites: 60 mensajes por participante cada 24 h; 2000 caracteres por mensaje
 - Solo disponible para el grupo experimental
@@ -184,16 +192,19 @@ Chat detecta crisis (modelo o palabras clave) → CrisisCard en la conversación
    + directorio de profesionales de apoyo
    + línea nacional (800-10-4100 Bolivia)
 → Cada acción queda registrada en eventos_crisis
-→ Email al investigador (Resend) al abrir la pantalla de crisis o contactar a un profesional
+→ Email al investigador (Resend) según la tabla
 ```
 
 | Evento registrado | ¿Email al investigador? |
 |---|---|
 | Apertura de pantalla de crisis | Sí |
 | Contacto a profesional de apoyo | Sí |
+| Crisis detectada en el chat | **Sí** (máx. 1 cada 30 min por participante; todos los eventos se registran) |
 | Contacto a persona de confianza | No |
 | Llamada a la línea nacional | No |
-| Crisis detectada en el chat | No (visible en el panel) |
+
+- El email indica el código de participante (EXP-XXX / CTR-XXX), la fecha y hora (Bolivia) y el evento; en el caso del chat, también el origen (detectada por el modelo o por palabras clave). **Nunca incluye el contenido de los mensajes.**
+- Si el envío del email falla, la respuesta del chat y la `CrisisCard` se muestran igual.
 
 ---
 
@@ -204,7 +215,8 @@ Chat detecta crisis (modelo o palabras clave) → CrisisCard en la conversación
 - Visualización: mediciones por instrumento (pestañas BAI / SWLS / SUS) con tipo, fecha, puntaje e interpretación; episodios con filtros
 - Ficha del participante con su historial BAI, SWLS y SUS
 - **Exportación en formato largo** (CSV con BOM para SPSS, y JSON): una fila por participante × instrumento × medición, con grupo (EXP/CTR), tipo, fecha, días, ventana, total, interpretación e `item_1…item_21`
-- Conversaciones del chat (solo investigador, auditado) con exportación CSV
+- Efectividad de estrategias por grupo (experimental y control, lado a lado)
+- Conversaciones del chat (solo investigador, auditado) con exportación CSV — **deshabilitada mientras la versión vigente del consentimiento sea v1.0**, que promete no acceder al contenido de los mensajes; se habilita con la v1.1
 - Log de eventos de crisis por participante
 - Auditoría completa de acciones administrativas
 
@@ -216,7 +228,7 @@ Chat detecta crisis (modelo o palabras clave) → CrisisCard en la conversación
 |---------|-----------|-------------|
 | `chat-proxy` | POST desde cliente (JWT, solo grupo experimental) | Llama Anthropic API con contexto TCC; historial leído de BD; límite 60 msgs/día; detección de crisis con respaldo por palabras clave |
 | `notificar-bai` | Cron 9 AM diario (header `x-cron-secret`) | Push por ventana de evaluación pendiente (BAI en semana 4; BAI + SWLS + SUS en semana 8; BAI + SWLS en semana 12); marca `inactivo_sin_basal` al día 7 |
-| `notificar-crisis` | POST desde cliente (JWT) | Email al investigador al detectar crisis |
+| `notificar-crisis` | POST desde cliente o desde `chat-proxy` (JWT) | Email al investigador por evento de crisis; límite de 30 min para crisis del chat |
 | `tts-proxy` | POST desde cliente (JWT, solo grupo experimental) | Voz ElevenLabs para el chat |
 | `send-daily-reminder` | Cron configurable | Push diario de estado emocional a hora elegida |
 
@@ -231,6 +243,7 @@ Chat detecta crisis (modelo o palabras clave) → CrisisCard en la conversación
 - Edge Functions protegidas: las del participante exigen su sesión (JWT); la del cron exige un secreto
 - Consentimiento auditado: versión, timestamp, user-agent y texto íntegro aceptado
 - Bloqueo de acceso si el consentimiento no está vigente
+- Versiones del consentimiento: **v1.0 vigente**; **v1.1 en borrador** pendiente del comité de ética (`docs/consentimiento-v1.1-borrador.md`). La v1.1 informa que el asistente no es un profesional de la salud, que los mensajes pasan por Anthropic y el investigador puede leerlos (acceso registrado), el modo voz (ElevenLabs y reconocimiento de voz del navegador), la alerta por email con código ante señales de riesgo y el acceso de la tutora a datos individuales seudonimizados. Al activarla, los participantes deben volver a aceptar.
 - Auditoría de acciones del panel admin (incluye la consulta y exportación de conversaciones)
 
 ---

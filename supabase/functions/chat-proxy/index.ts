@@ -186,6 +186,26 @@ async function buildSystemPrompt(
     ejerciciosBlock + episodiosBlock
 }
 
+// Email al investigador vía notificar-crisis (misma lógica y límite de 30 min).
+// No bloquea la respuesta ni la CrisisCard: si falla, solo queda en el log.
+function notificarCrisisEnSegundoPlano(authHeader: string, eventoId: string) {
+  const envio = fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/notificar-crisis`, {
+    method: 'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      'Authorization': authHeader,
+      'apikey':        Deno.env.get('SUPABASE_ANON_KEY')!,
+    },
+    body: JSON.stringify({ tipo_evento: 'deteccion_chat', evento_id: eventoId }),
+  })
+    .then(async r => { if (!r.ok) console.error('[chat-proxy] notificar-crisis', r.status, await r.text()) })
+    .catch(err => console.error('[chat-proxy] notificar-crisis', err))
+
+  // deno-lint-ignore no-explicit-any
+  const runtime = (globalThis as any).EdgeRuntime
+  if (runtime?.waitUntil) runtime.waitUntil(envio)
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body),
     { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
@@ -290,11 +310,18 @@ Deno.serve(async (req: Request) => {
     await supabase.from('chat_mensajes').insert({ user_id: user.id, rol: 'assistant', contenido: content })
 
     if (marcadoPorModelo || marcadoPorFrases) {
-      await supabase.from('eventos_crisis').insert({
+      // El id se genera aquí: el participante puede insertar en eventos_crisis pero no
+      // leerlo (RLS), así que un INSERT … RETURNING fallaría y se perdería el evento.
+      const eventoId = crypto.randomUUID()
+      const { error: errEvento } = await supabase.from('eventos_crisis').insert({
+        id: eventoId,
         user_id: user.id,
         tipo_evento: 'deteccion_chat',
         detalles: { origen: marcadoPorModelo ? 'modelo' : 'palabras_clave' },
       })
+
+      if (errEvento) console.error('[chat-proxy] no se pudo registrar evento de crisis', errEvento)
+      else notificarCrisisEnSegundoPlano(authHeader, eventoId)
     }
 
     return json({ content })

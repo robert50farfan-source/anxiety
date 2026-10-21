@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { Fragment, useState, useMemo } from 'react'
 import { useEpisodiosAdmin } from '../hooks/useEpisodiosAdmin'
 import { useAdminSession } from '../hooks/useAdminSession'
 import { INTENSIDAD_CONFIG, ESTRATEGIA_LABEL } from '../../hooks/useEpisodios'
@@ -248,12 +248,14 @@ export default function Episodios() {
           {/* Efectividad por estrategia */}
           {efectividadPorEstrategia.length > 0 && (
             <div className="bg-white rounded-xl border border-slate-200 p-5">
-              <h2 className="text-sm font-semibold text-slate-700 mb-4">Efectividad de estrategias (grupo experimental)</h2>
+              <h2 className="text-sm font-semibold text-slate-700 mb-4">Efectividad de estrategias por grupo (promedio 1-5)</h2>
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-100">
                     <th className="py-2 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-left">Estrategia</th>
-                    <th className="py-2 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Promedio (1-5)</th>
+                    <th className="py-2 pr-4 text-xs font-semibold text-indigo-500 uppercase tracking-wider text-right">Exp</th>
+                    <th className="py-2 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">N</th>
+                    <th className="py-2 pr-4 text-xs font-semibold text-amber-600 uppercase tracking-wider text-right">Ctr</th>
                     <th className="py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">N</th>
                   </tr>
                 </thead>
@@ -261,12 +263,18 @@ export default function Episodios() {
                   {efectividadPorEstrategia.map(r => (
                     <tr key={r.estrategia}>
                       <td className="py-2 pr-4 text-slate-700">{r.estrategia}</td>
-                      <td className="py-2 pr-4 text-right">
-                        <span className={`font-semibold ${r.promedio >= 4 ? 'text-green-600' : r.promedio >= 3 ? 'text-amber-600' : 'text-slate-600'}`}>
-                          {r.promedio}
-                        </span>
-                      </td>
-                      <td className="py-2 text-right text-slate-500">{r.n}</td>
+                      {[r.exp, r.ctr].map((g, i) => (
+                        <Fragment key={i}>
+                          <td className="py-2 pr-4 text-right">
+                            {g.promedio === null ? <span className="text-slate-300">—</span> : (
+                              <span className={`font-semibold ${g.promedio >= 4 ? 'text-green-600' : g.promedio >= 3 ? 'text-amber-600' : 'text-slate-600'}`}>
+                                {g.promedio}
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2 pr-4 text-right text-slate-500">{g.n}</td>
+                        </Fragment>
+                      ))}
                     </tr>
                   ))}
                 </tbody>

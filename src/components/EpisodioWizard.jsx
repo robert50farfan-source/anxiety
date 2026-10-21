@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useEpisodios, intensidadDesdeNumero, ESTRATEGIA_LABEL } from '../hooks/useEpisodios'
+import { gruposEstrategias } from '../lib/episodios'
 
 const INTENSIDAD_LABEL = (n) => {
   if (n === 1)  return 'Muy leve — apenas perceptible'
@@ -45,15 +46,6 @@ const SINTOMAS_EMOCIONALES_OPCIONES = [
   { value: 'otro_emocional',            label: 'Otro' },
 ]
 
-const ESTRATEGIAS_EXP = [
-  'respiracion_478', 'grounding_54321', 'relajacion_muscular', 'mindfulness',
-  'visualizacion_guiada', 'chat_ia', 'contacto_profesional', 'contacto_personal', 'otra', 'nada',
-]
-
-const ESTRATEGIAS_CTR = [
-  'respiro_solo', 'distraccion', 'hable_alguien', 'espere', 'busque_informacion',
-  'contacto_profesional', 'contacto_personal', 'otra', 'nada',
-]
 
 const EFECTIVIDAD_LABEL = { 1: 'Nada', 2: 'Poco', 3: 'Algo', 4: 'Bastante', 5: 'Mucho' }
 
@@ -264,7 +256,7 @@ export default function EpisodioWizard({ onClose, initialData = null, initialPas
     setConfirmado(true)
   }
 
-  const estrategiasDisponibles = esExperimental ? ESTRATEGIAS_EXP : ESTRATEGIAS_CTR
+  const estrategiasPorGrupo = gruposEstrategias(esExperimental)
   const tieneEstrategiaReal = form.estrategias_aplicadas.length > 0 && !form.estrategias_aplicadas.every(s => s === 'nada')
 
   // Pantalla de confirmación
@@ -681,15 +673,22 @@ export default function EpisodioWizard({ onClose, initialData = null, initialPas
               <p className="text-sm text-gray-500">Estrategias que aplicaste</p>
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              {estrategiasDisponibles.map(s => (
-                <Chip
-                  key={s}
-                  active={form.estrategias_aplicadas.includes(s)}
-                  onClick={() => toggleEstrategia(s)}
-                >
-                  {ESTRATEGIA_LABEL[s] ?? s}
-                </Chip>
+            <div className="space-y-4">
+              {estrategiasPorGrupo.map(g => (
+                <div key={g.titulo}>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">{g.titulo}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {g.ids.map(s => (
+                      <Chip
+                        key={s}
+                        active={form.estrategias_aplicadas.includes(s)}
+                        onClick={() => toggleEstrategia(s)}
+                      >
+                        {ESTRATEGIA_LABEL[s] ?? s}
+                      </Chip>
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
 

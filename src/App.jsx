@@ -13,6 +13,7 @@ import ParticipanteBadge from './components/ParticipanteBadge'
 import PantallaConsentimiento from './components/PantallaConsentimiento'
 import BasalBloqueada from './components/BasalBloqueada'
 import SWLSPendienteAviso from './components/SWLSPendienteAviso'
+import { CONSENTIMIENTO_PERMITE_LEER_CHAT } from './config/consentimiento'
 
 import { AdminSessionProvider } from './admin/hooks/useAdminSession'
 import AdminBanner from './admin/components/AdminBanner'
@@ -158,7 +159,8 @@ export default function App() {
               <Route path="mediciones"    element={<Mediciones />} />
               <Route path="episodios"     element={<Episodios />} />
               <Route path="crisis"        element={<CrisisEventos />} />
-              <Route path="conversaciones" element={<Conversaciones />} />
+              {/* Solo si el consentimiento vigente declara que el investigador puede leer el chat */}
+              <Route path="conversaciones" element={CONSENTIMIENTO_PERMITE_LEER_CHAT ? <Conversaciones /> : <Navigate to="/admin/dashboard" replace />} />
               <Route path="configuracion" element={<Configuracion />}>
                 <Route index element={<Navigate to="administradores" replace />} />
                 <Route path="administradores" element={<Administradores />} />

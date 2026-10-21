@@ -11,10 +11,22 @@ const TIPO_LABELS: Record<string, string> = {
   contacto_profesional_apoyo: 'contactó a un profesional de apoyo',
   contacto_personal:          'contactó a su persona de apoyo personal',
   contacto_linea_nacional:    'llamó a la línea nacional de salud mental',
+  deteccion_chat:             'crisis detectada en el chat',
+}
+
+const ORIGEN_LABELS: Record<string, string> = {
+  modelo:         'por el asistente (modelo)',
+  palabras_clave: 'por palabras clave (respaldo del servidor)',
 }
 
 // Solo estos tipos generan notificación al investigador
-const TIPOS_NOTIFICABLES = new Set(['apertura_pantalla', 'contacto_profesional_apoyo'])
+const TIPOS_NOTIFICABLES = new Set(['apertura_pantalla', 'contacto_profesional_apoyo', 'deteccion_chat'])
+
+// Crisis del chat: como máximo un email por participante en esta ventana
+const VENTANA_CHAT_MS = 30 * 60 * 1000
+
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -22,7 +34,7 @@ Deno.serve(async (req: Request) => {
       headers: {
         'Access-Control-Allow-Origin':  '*',
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, apikey',
       },
     })
   }
@@ -36,23 +48,45 @@ Deno.serve(async (req: Request) => {
     global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } },
   })
   const { data: { user } } = await authClient.auth.getUser()
-  if (!user) {
-    return new Response(JSON.stringify({ ok: false, error: 'unauthorized' }), { status: 401 })
-  }
+  if (!user) return json({ ok: false, error: 'unauthorized' }, 401)
 
   const body = await req.json().catch(() => null)
-  if (!body?.tipo_evento) {
-    return new Response(JSON.stringify({ ok: false, error: 'bad_request' }), { status: 400 })
-  }
+  if (!body?.tipo_evento) return json({ ok: false, error: 'bad_request' }, 400)
 
-  const { tipo_evento, profesional_id } = body
+  const { tipo_evento, profesional_id, evento_id } = body
   const user_id = user.id
 
-  if (!TIPOS_NOTIFICABLES.has(tipo_evento)) {
-    return new Response(JSON.stringify({ ok: true, skipped: true }), { status: 200 })
-  }
+  if (!TIPOS_NOTIFICABLES.has(tipo_evento)) return json({ ok: true, skipped: true })
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE)
+
+  // Crisis del chat: el evento debe existir y ser del usuario; el origen se lee de la BD
+  let lineaOrigen = ''
+  if (tipo_evento === 'deteccion_chat') {
+    if (!evento_id) return json({ ok: false, error: 'bad_request' }, 400)
+
+    const { data: evento } = await supabase
+      .from('eventos_crisis')
+      .select('id, detalles')
+      .eq('id', evento_id)
+      .eq('user_id', user_id)
+      .eq('tipo_evento', 'deteccion_chat')
+      .maybeSingle()
+    if (!evento) return json({ ok: false, error: 'evento_no_encontrado' }, 404)
+
+    const desde = new Date(Date.now() - VENTANA_CHAT_MS).toISOString()
+    const { count } = await supabase
+      .from('eventos_crisis')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user_id)
+      .eq('tipo_evento', 'deteccion_chat')
+      .eq('notificado_email', true)
+      .gte('timestamp', desde)
+    if ((count ?? 0) > 0) return json({ ok: true, throttled: true })
+
+    const origen = evento.detalles?.origen
+    lineaOrigen = `\nOrigen                 : detectada en el chat, ${ORIGEN_LABELS[origen] ?? origen ?? 'desconocido'}`
+  }
 
   // Obtener emails de investigadores activos
   const { data: admins } = await supabase
@@ -65,7 +99,7 @@ Deno.serve(async (req: Request) => {
 
   if (destinatarios.length === 0) {
     console.warn('notificar-crisis: no hay investigadores activos para notificar')
-    return new Response(JSON.stringify({ ok: true, no_recipients: true }), { status: 200 })
+    return json({ ok: true, no_recipients: true })
   }
 
   // Info del profesional contactado (si aplica)
@@ -81,16 +115,23 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  const codigo         = String(user_id).slice(0, 8).toUpperCase()
+  // Código de participante real (EXP-XXX / CTR-XXX)
+  const { data: participante } = await supabase
+    .from('participantes')
+    .select('codigo_participante')
+    .eq('auth_user_id', user_id)
+    .maybeSingle()
+  const codigo         = participante?.codigo_participante ?? `#${String(user_id).slice(0, 8).toUpperCase()}`
   const accion         = TIPO_LABELS[tipo_evento] ?? tipo_evento
   const horaBolivia    = new Date().toLocaleString('es-BO', { timeZone: 'America/La_Paz' })
 
+  // Nunca se incluye el contenido de mensajes: el investigador lo consulta en el panel
   const cuerpo = `
 Un participante de la investigación de ansiedad ha registrado un evento de crisis.
 
-Código de participante : #${codigo}
+Código de participante : ${codigo}
 Evento                 : ${accion}
-Hora (Bolivia)         : ${horaBolivia}${lineaProfesional}
+Hora (Bolivia)         : ${horaBolivia}${lineaOrigen}${lineaProfesional}
 
 ---
 Mensaje automático — ingresa al panel para ver detalles completos.
@@ -98,7 +139,7 @@ Mensaje automático — ingresa al panel para ver detalles completos.
 
   if (!RESEND_API_KEY) {
     console.warn('notificar-crisis: RESEND_API_KEY no configurado — email no enviado')
-    return new Response(JSON.stringify({ ok: true, email_skipped: true }), { status: 200 })
+    return json({ ok: true, email_skipped: true })
   }
 
   const res = await fetch('https://api.resend.com/emails', {
@@ -110,7 +151,7 @@ Mensaje automático — ingresa al panel para ver detalles completos.
     body: JSON.stringify({
       from:    FROM_EMAIL,
       to:      destinatarios,
-      subject: `⚠️ Crisis — Participante #${codigo} ${accion}`,
+      subject: `⚠️ Crisis — Participante ${codigo}: ${accion}`,
       text:    cuerpo,
     }),
   })
@@ -118,8 +159,13 @@ Mensaje automático — ingresa al panel para ver detalles completos.
   if (!res.ok) {
     const err = await res.text()
     console.error('notificar-crisis: Resend error', err)
-    return new Response(JSON.stringify({ ok: false, error: err }), { status: 500 })
+    return json({ ok: false, error: 'email_failed' }, 502)
   }
 
-  return new Response(JSON.stringify({ ok: true }), { status: 200 })
+  // Marcar como notificado solo si el email salió (si falla, el próximo evento reintenta)
+  if (evento_id) {
+    await supabase.from('eventos_crisis').update({ notificado_email: true }).eq('id', evento_id).eq('user_id', user_id)
+  }
+
+  return json({ ok: true })
 })

@@ -4,6 +4,7 @@ import GroundingGuide from '../components/GroundingGuide'
 import MuscleGuide from '../components/MuscleGuide'
 import MindfulnessGuide from '../components/MindfulnessGuide'
 import VisualizationGuide from '../components/VisualizationGuide'
+import SugerenciaEpisodio, { tocaSugerirEpisodio } from '../components/SugerenciaEpisodio'
 
 function BreathingCircleIcon({ className = '' }) {
   return (
@@ -90,6 +91,8 @@ export default function Exercises() {
   const [showMindfulness,    setShowMindfulness]    = useState(false)
   const [showVisualization,  setShowVisualization]  = useState(false)
   const [expanded, setExpanded] = useState(null)
+  const [sugerencia, setSugerencia] = useState(null) // estrategia del ejercicio recién hecho
+  const sugerir = (estrategia) => { if (tocaSugerirEpisodio()) setSugerencia(estrategia) }
 
   const getAction = (id) => {
     if (id === 'breathing478') return () => setShowBreathing(true)
@@ -174,11 +177,14 @@ export default function Exercises() {
         </div>
       </div>
 
-      {showBreathing     && <BreathingGuide     onClose={() => setShowBreathing(false)} />}
-      {showGrounding     && <GroundingGuide     onClose={() => setShowGrounding(false)} />}
-      {showMuscle        && <MuscleGuide        onClose={() => setShowMuscle(false)} />}
-      {showMindfulness   && <MindfulnessGuide   onClose={() => setShowMindfulness(false)} />}
-      {showVisualization && <VisualizationGuide onClose={() => setShowVisualization(false)} />}
+      {showBreathing     && <BreathingGuide     onClose={() => { setShowBreathing(false);     sugerir('respiracion_478') }} />}
+      {showGrounding     && <GroundingGuide     onClose={() => { setShowGrounding(false);     sugerir('grounding_54321') }} />}
+      {showMuscle        && <MuscleGuide        onClose={() => { setShowMuscle(false);        sugerir('relajacion_muscular') }} />}
+      {showMindfulness   && <MindfulnessGuide   onClose={() => { setShowMindfulness(false);   sugerir('mindfulness') }} />}
+      {showVisualization && <VisualizationGuide onClose={() => { setShowVisualization(false); sugerir('visualizacion_guiada') }} />}
+
+      {/* Sugerencia tras ejercicio — igual para ambos grupos, máx. una vez al día */}
+      {sugerencia && <SugerenciaEpisodio estrategia={sugerencia} onCerrar={() => setSugerencia(null)} />}
     </>
   )
 }

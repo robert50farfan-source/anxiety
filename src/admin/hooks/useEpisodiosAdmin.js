@@ -136,19 +136,25 @@ export function useEpisodiosAdmin() {
     } catch { return null }
   }
 
-  // Promedio efectividad por estrategia (solo experimental)
+  // Promedio efectividad por estrategia, por grupo (ambos usan la misma lista)
   const efectividadPorEstrategia = (() => {
     const map = {}
-    episodios.filter(e => e.participantes?.grupo === 'experimental' && e.completado && e.efectividad_estrategia).forEach(e => {
+    episodios.filter(e => e.completado && e.efectividad_estrategia && e.participantes?.grupo).forEach(e => {
+      const g = e.participantes.grupo === 'experimental' ? 'exp' : 'ctr'
       ;(e.estrategias_aplicadas ?? []).forEach(s => {
-        if (!map[s]) map[s] = { suma: 0, n: 0 }
-        map[s].suma += e.efectividad_estrategia
-        map[s].n++
+        if (!map[s]) map[s] = { exp: { suma: 0, n: 0 }, ctr: { suma: 0, n: 0 } }
+        map[s][g].suma += e.efectividad_estrategia
+        map[s][g].n++
       })
     })
+    const prom = ({ suma, n }) => (n ? (suma / n).toFixed(1) : null)
     return Object.entries(map)
-      .map(([k, { suma, n }]) => ({ estrategia: ESTRATEGIA_LABEL[k] ?? k, promedio: (suma / n).toFixed(1), n }))
-      .sort((a, b) => b.promedio - a.promedio)
+      .map(([k, v]) => ({
+        estrategia: ESTRATEGIA_LABEL[k] ?? k,
+        exp: { promedio: prom(v.exp), n: v.exp.n },
+        ctr: { promedio: prom(v.ctr), n: v.ctr.n },
+      }))
+      .sort((a, b) => (b.exp.n + b.ctr.n) - (a.exp.n + a.ctr.n))
   })()
 
   // Exportar CSV wide (BOM para SPSS)
