@@ -11,6 +11,7 @@
 4. Se informa sobre los proveedores externos del chat (Anthropic) y del modo voz (ElevenLabs y el reconocimiento de voz del navegador).
 5. Las alertas de crisis ahora también se envían cuando el chat detecta señales de riesgo, y el investigador podrá contactar al participante.
 6. «Asignación a grupos» precisa que ambos grupos tienen los mismos ejercicios, cuestionarios y recursos, y que la única diferencia es el acceso al asistente (diseño de control activo).
+7. Se informa dónde se almacenan los datos (Supabase, Estados Unidos) y qué proveedores externos los procesan fuera de Bolivia (Anthropic, ElevenLabs, servicio de voz del navegador, Resend).
 
 ## Resumen de cambios por sección
 
@@ -21,6 +22,7 @@
 | Propósito del estudio | Sin cambios |
 | Qué datos recogemos | Modificada |
 | Confidencialidad | Modificada |
+| Dónde se guardan tus datos | Nueva |
 | Riesgos | Sin cambios |
 | Beneficios | Sin cambios |
 | Asignación a grupos | Modificada |
@@ -76,6 +78,10 @@ Tu identidad permanece anónima dentro de la aplicación. Esta no pide tu nombre
 > Tu identidad permanece anónima dentro de la aplicación. Esta no pide tu nombre, número de matrícula ni datos personales identificables. Solo el investigador principal conoce la asociación entre tu nombre y tu código de participante, mediante un registro físico resguardado bajo llave. Los resultados se publicarán de forma agregada, sin identificar a participantes individuales. Tu tutora académica del estudio tiene acceso de solo lectura a los datos agregados.
 
 </details>
+
+### Dónde se guardan tus datos — **[NUEVA]**
+
+Tus respuestas y registros se guardan de forma segura en servidores ubicados en los Estados Unidos (Supabase). Las conversaciones con el asistente se procesan mediante Anthropic y, si usas el modo voz, mediante ElevenLabs y el servicio de voz de tu navegador. Las alertas de seguridad al investigador se envían por correo electrónico mediante Resend e incluyen solo tu código de participante. Estos proveedores también operan fuera de Bolivia. La aplicación no te pide tu nombre: en la base de datos te identificas únicamente con un código.
 
 ### Riesgos
 

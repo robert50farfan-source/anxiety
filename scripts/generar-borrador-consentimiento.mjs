@@ -58,6 +58,7 @@ const md = `# Consentimiento informado v1.1 — BORRADOR
 4. Se informa sobre los proveedores externos del chat (Anthropic) y del modo voz (ElevenLabs y el reconocimiento de voz del navegador).
 5. Las alertas de crisis ahora también se envían cuando el chat detecta señales de riesgo, y el investigador podrá contactar al participante.
 6. «Asignación a grupos» precisa que ambos grupos tienen los mismos ejercicios, cuestionarios y recursos, y que la única diferencia es el acceso al asistente (diseño de control activo).
+7. Se informa dónde se almacenan los datos (Supabase, Estados Unidos) y qué proveedores externos los procesan fuera de Bolivia (Anthropic, ElevenLabs, servicio de voz del navegador, Resend).
 
 ## Resumen de cambios por sección
 

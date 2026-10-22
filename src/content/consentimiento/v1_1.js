@@ -9,6 +9,8 @@
 // Cambios respecto a v1.0:
 //  - Qué datos recogemos: SWLS y SUS; el investigador puede leer los mensajes del chat.
 //  - Confidencialidad: la tutora accede a datos individuales identificados solo por código.
+//  - Dónde se guardan tus datos (nueva): Supabase en EE. UU.; Anthropic, ElevenLabs,
+//    voz del navegador y Resend operan fuera de Bolivia.
 //  - Uso de IA: no es profesional de salud; proveedor externo (Anthropic); lectura de
 //    conversaciones por el investigador con registro de acceso.
 //  - Modo voz (nuevo): ElevenLabs para lectura en voz alta; reconocimiento de voz del navegador.
@@ -51,6 +53,10 @@ export const SECCIONES = [
   {
     titulo: 'Confidencialidad',
     bloques: [{ p: 'Tu identidad permanece anónima dentro de la aplicación. Esta no pide tu nombre, número de matrícula ni datos personales identificables. Solo el investigador principal conoce la asociación entre tu nombre y tu código de participante, mediante un registro físico resguardado bajo llave. Tu tutora de tesis tiene acceso de solo lectura a los datos del estudio, identificados únicamente por tu código de participante y nunca por tu nombre. Los resultados se publicarán de forma agregada, sin identificar a participantes individuales.' }],
+  },
+  {
+    titulo: 'Dónde se guardan tus datos',
+    bloques: [{ p: 'Tus respuestas y registros se guardan de forma segura en servidores ubicados en los Estados Unidos (Supabase). Las conversaciones con el asistente se procesan mediante Anthropic y, si usas el modo voz, mediante ElevenLabs y el servicio de voz de tu navegador. Las alertas de seguridad al investigador se envían por correo electrónico mediante Resend e incluyen solo tu código de participante. Estos proveedores también operan fuera de Bolivia. La aplicación no te pide tu nombre: en la base de datos te identificas únicamente con un código.' }],
   },
   {
     titulo: 'Riesgos',
