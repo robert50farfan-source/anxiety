@@ -3,13 +3,21 @@ import webpush from 'npm:web-push'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
+  }
+
+  // Solo el cron puede ejecutarla: envía pushes a todos los suscritos.
+  // Mismo secreto que notificar-bai (supabase secrets set CRON_SECRET=...)
+  const cronSecret = Deno.env.get('CRON_SECRET')
+  if (!cronSecret || req.headers.get('x-cron-secret') !== cronSecret) {
+    return new Response(JSON.stringify({ error: 'No autorizado' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   }
 
   try {
