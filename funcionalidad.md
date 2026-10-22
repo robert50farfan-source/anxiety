@@ -230,7 +230,7 @@ Chat detecta crisis (modelo o palabras clave) → CrisisCard en la conversación
 | `notificar-bai` | Cron 9 AM diario (header `x-cron-secret`) | Push por ventana de evaluación pendiente (BAI en semana 4; BAI + SWLS + SUS en semana 8; BAI + SWLS en semana 12); marca `inactivo_sin_basal` al día 7 |
 | `notificar-crisis` | POST desde cliente o desde `chat-proxy` (JWT) | Email al investigador por evento de crisis; límite de 30 min para crisis del chat |
 | `tts-proxy` | POST desde cliente (JWT, solo grupo experimental) | Voz ElevenLabs para el chat |
-| `send-daily-reminder` | Cron configurable | Push diario de estado emocional a hora elegida |
+| `send-daily-reminder` | Cron configurable (header `x-cron-secret`) | Push diario de estado emocional a hora elegida |
 
 ---
 
