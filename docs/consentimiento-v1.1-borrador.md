@@ -11,7 +11,7 @@
 4. Se informa sobre los proveedores externos del chat (Anthropic) y del modo voz (ElevenLabs y el reconocimiento de voz del navegador).
 5. Las alertas de crisis ahora también se envían cuando el chat detecta señales de riesgo, y el investigador podrá contactar al participante.
 6. «Asignación a grupos» precisa que ambos grupos tienen los mismos ejercicios, cuestionarios y recursos, y que la única diferencia es el acceso al asistente (diseño de control activo).
-7. Se informa dónde se almacenan los datos (Supabase, Estados Unidos) y qué proveedores externos los procesan fuera de Bolivia (Anthropic, ElevenLabs, servicio de voz del navegador, Resend).
+7. Se informa dónde se almacenan los datos (Supabase, Estados Unidos), que el servidor web (Hostinger, Estados Unidos) registra la IP de conexión, y qué proveedores externos los procesan fuera de Bolivia (Anthropic, ElevenLabs, servicio de voz del navegador, Resend).
 
 ## Resumen de cambios por sección
 
@@ -81,7 +81,7 @@ Tu identidad permanece anónima dentro de la aplicación. Esta no pide tu nombre
 
 ### Dónde se guardan tus datos — **[NUEVA]**
 
-Tus respuestas y registros se guardan de forma segura en servidores ubicados en los Estados Unidos (Supabase). Las conversaciones con el asistente se procesan mediante Anthropic y, si usas el modo voz, mediante ElevenLabs y el servicio de voz de tu navegador. Las alertas de seguridad al investigador se envían por correo electrónico mediante Resend e incluyen solo tu código de participante. Estos proveedores también operan fuera de Bolivia. La aplicación no te pide tu nombre: en la base de datos te identificas únicamente con un código.
+Tus respuestas y registros se guardan de forma segura en servidores ubicados en los Estados Unidos (Supabase). La aplicación se descarga desde un servidor también ubicado en los Estados Unidos (Hostinger), que, como cualquier sitio web, registra técnicamente la dirección IP de conexión. Las conversaciones con el asistente se procesan mediante Anthropic y, si usas el modo voz, mediante ElevenLabs y el servicio de voz de tu navegador. Las alertas de seguridad al investigador se envían por correo electrónico mediante Resend e incluyen solo tu código de participante. Estos proveedores también operan fuera de Bolivia. La aplicación no te pide tu nombre: en la base de datos te identificas únicamente con un código.
 
 ### Riesgos
 

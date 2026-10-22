@@ -9,7 +9,7 @@
 // Cambios respecto a v1.0:
 //  - Qué datos recogemos: SWLS y SUS; el investigador puede leer los mensajes del chat.
 //  - Confidencialidad: la tutora accede a datos individuales identificados solo por código.
-//  - Dónde se guardan tus datos (nueva): Supabase en EE. UU.; Anthropic, ElevenLabs,
+//  - Dónde se guardan tus datos (nueva): Supabase y servidor web (Hostinger) en EE. UU.; Anthropic, ElevenLabs,
 //    voz del navegador y Resend operan fuera de Bolivia.
 //  - Uso de IA: no es profesional de salud; proveedor externo (Anthropic); lectura de
 //    conversaciones por el investigador con registro de acceso.
@@ -56,7 +56,7 @@ export const SECCIONES = [
   },
   {
     titulo: 'Dónde se guardan tus datos',
-    bloques: [{ p: 'Tus respuestas y registros se guardan de forma segura en servidores ubicados en los Estados Unidos (Supabase). Las conversaciones con el asistente se procesan mediante Anthropic y, si usas el modo voz, mediante ElevenLabs y el servicio de voz de tu navegador. Las alertas de seguridad al investigador se envían por correo electrónico mediante Resend e incluyen solo tu código de participante. Estos proveedores también operan fuera de Bolivia. La aplicación no te pide tu nombre: en la base de datos te identificas únicamente con un código.' }],
+    bloques: [{ p: 'Tus respuestas y registros se guardan de forma segura en servidores ubicados en los Estados Unidos (Supabase). La aplicación se descarga desde un servidor también ubicado en los Estados Unidos (Hostinger), que, como cualquier sitio web, registra técnicamente la dirección IP de conexión. Las conversaciones con el asistente se procesan mediante Anthropic y, si usas el modo voz, mediante ElevenLabs y el servicio de voz de tu navegador. Las alertas de seguridad al investigador se envían por correo electrónico mediante Resend e incluyen solo tu código de participante. Estos proveedores también operan fuera de Bolivia. La aplicación no te pide tu nombre: en la base de datos te identificas únicamente con un código.' }],
   },
   {
     titulo: 'Riesgos',
