@@ -26,6 +26,8 @@ registerRoute(
 )
 
 // Push notification received
+// `tag` agrupa por tipo: un aviso reemplaza solo a otro del mismo tipo
+// (p. ej. el recordatorio diario no oculta un aviso de evaluación pendiente).
 self.addEventListener('push', event => {
   const data = event.data?.json() ?? {}
   event.waitUntil(
@@ -33,7 +35,7 @@ self.addEventListener('push', event => {
       body:  data.body  ?? '¿Has hecho tu práctica de hoy?',
       icon:  '/icons/icon-192x192.svg',
       badge: '/icons/icon-192x192.svg',
-      tag:   'daily-reminder',
+      tag:   data.tag ?? 'daily-reminder',
       renotify: true,
       data: { url: data.url ?? '/' },
     })

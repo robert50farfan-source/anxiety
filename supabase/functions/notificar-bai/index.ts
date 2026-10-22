@@ -178,7 +178,8 @@ Deno.serve(async (req: Request) => {
       if (notif && webpushEnabled && subs && subs.length > 0) {
         for (const sub of subs) {
           try {
-            await webpush.sendNotification(sub.subscription, JSON.stringify(notif))
+            // tag propio: no lo reemplaza el recordatorio diario (tag 'daily-reminder')
+            await webpush.sendNotification(sub.subscription, JSON.stringify({ ...notif, tag: 'evaluacion' }))
             enviados++
           } catch (err: any) {
             if (err.statusCode === 410) {

@@ -43,6 +43,7 @@ Deno.serve(async (req: Request) => {
               title: 'AnxietyApp',
               body:  '¿Cómo te sientes hoy? Unos minutos de práctica marcan la diferencia. 🌿',
               url:   '/',
+              tag:   'daily-reminder',
             })
           )
           return { id: sub.id, status: 'sent' }
